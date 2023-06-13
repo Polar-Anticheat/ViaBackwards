@@ -100,7 +100,7 @@ public class EntityPackets1_16_2 extends EntityRewriter<ClientboundPackets1_16_2
                 map(Type.LONG); // Seed
                 handler(wrapper -> {
                     int maxPlayers = wrapper.read(Type.VAR_INT);
-                    wrapper.write(Type.UNSIGNED_BYTE, (short) Math.max(maxPlayers, 255));
+                    wrapper.write(Type.UNSIGNED_BYTE, (short) Math.min(maxPlayers, 255));
                 });
                 // ...
                 handler(getTrackerHandler(Entity1_16_2Types.PLAYER, Type.INT));
@@ -122,8 +122,8 @@ public class EntityPackets1_16_2 extends EntityRewriter<ClientboundPackets1_16_2
 
     @Override
     protected void registerRewrites() {
-        registerMetaTypeHandler(Types1_16.META_TYPES.itemType, Types1_16.META_TYPES.blockStateType,
-                Types1_16.META_TYPES.particleType, Types1_16.META_TYPES.optionalComponentType, Types1_16.META_TYPES.componentType);
+        registerMetaTypeHandler(Types1_16.META_TYPES.itemType, Types1_16.META_TYPES.blockStateType, null,
+                Types1_16.META_TYPES.particleType, Types1_16.META_TYPES.componentType, Types1_16.META_TYPES.optionalComponentType);
 
         mapTypes(Entity1_16_2Types.values(), Entity1_16Types.class);
         mapEntityTypeWithData(Entity1_16_2Types.PIGLIN_BRUTE, Entity1_16_2Types.PIGLIN).jsonName();
