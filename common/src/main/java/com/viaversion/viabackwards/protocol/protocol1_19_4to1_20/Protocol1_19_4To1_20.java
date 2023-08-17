@@ -18,25 +18,25 @@
 package com.viaversion.viabackwards.protocol.protocol1_19_4to1_20;
 
 import com.viaversion.viabackwards.api.BackwardsProtocol;
-import com.viaversion.viabackwards.api.data.BackwardsMappings;
 import com.viaversion.viabackwards.api.rewriters.SoundRewriter;
 import com.viaversion.viabackwards.api.rewriters.TranslatableRewriter;
+import com.viaversion.viabackwards.protocol.protocol1_19_4to1_20.data.BackwardsMappings;
 import com.viaversion.viabackwards.protocol.protocol1_19_4to1_20.packets.BlockItemPackets1_20;
 import com.viaversion.viabackwards.protocol.protocol1_19_4to1_20.packets.EntityPackets1_20;
 import com.viaversion.viaversion.api.connection.UserConnection;
+import com.viaversion.viaversion.api.minecraft.RegistryType;
 import com.viaversion.viaversion.api.minecraft.entities.Entity1_19_4Types;
 import com.viaversion.viaversion.api.type.Type;
 import com.viaversion.viaversion.data.entity.EntityTrackerBase;
 import com.viaversion.viaversion.protocols.protocol1_19_4to1_19_3.ClientboundPackets1_19_4;
 import com.viaversion.viaversion.protocols.protocol1_19_4to1_19_3.ServerboundPackets1_19_4;
-import com.viaversion.viaversion.protocols.protocol1_20to1_19_4.Protocol1_20To1_19_4;
 import com.viaversion.viaversion.rewriter.StatisticsRewriter;
 import com.viaversion.viaversion.rewriter.TagRewriter;
 import java.util.Arrays;
 
 public final class Protocol1_19_4To1_20 extends BackwardsProtocol<ClientboundPackets1_19_4, ClientboundPackets1_19_4, ServerboundPackets1_19_4, ServerboundPackets1_19_4> {
 
-    public static final BackwardsMappings MAPPINGS = new BackwardsMappings("1.20", "1.19.4", Protocol1_20To1_19_4.class);
+    public static final BackwardsMappings MAPPINGS = new BackwardsMappings();
     private final TranslatableRewriter<ClientboundPackets1_19_4> translatableRewriter = new TranslatableRewriter<>(this);
     private final EntityPackets1_20 entityRewriter = new EntityPackets1_20(this);
     private final BlockItemPackets1_20 itemRewriter = new BlockItemPackets1_20(this);
@@ -50,6 +50,7 @@ public final class Protocol1_19_4To1_20 extends BackwardsProtocol<ClientboundPac
         super.registerPackets();
 
         final TagRewriter<ClientboundPackets1_19_4> tagRewriter = new TagRewriter<>(this);
+        tagRewriter.addEmptyTag(RegistryType.BLOCK, "minecraft:replaceable_plants");
         tagRewriter.registerGeneric(ClientboundPackets1_19_4.TAGS);
 
         final SoundRewriter<ClientboundPackets1_19_4> soundRewriter = new SoundRewriter<>(this);
