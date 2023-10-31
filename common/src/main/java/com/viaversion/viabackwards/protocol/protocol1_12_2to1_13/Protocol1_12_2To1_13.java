@@ -33,7 +33,8 @@ import com.viaversion.viabackwards.protocol.protocol1_12_2to1_13.storage.PlayerP
 import com.viaversion.viabackwards.protocol.protocol1_12_2to1_13.storage.TabCompleteStorage;
 import com.viaversion.viaversion.api.Via;
 import com.viaversion.viaversion.api.connection.UserConnection;
-import com.viaversion.viaversion.api.minecraft.entities.Entity1_13Types;
+import com.viaversion.viaversion.api.minecraft.ClientWorld;
+import com.viaversion.viaversion.api.minecraft.entities.EntityTypes1_13;
 import com.viaversion.viaversion.data.entity.EntityTrackerBase;
 import com.viaversion.viaversion.libs.gson.JsonElement;
 import com.viaversion.viaversion.libs.gson.JsonObject;
@@ -46,7 +47,7 @@ import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.ChatRewriter;
 import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.ClientboundPackets1_13;
 import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.Protocol1_13To1_12_2;
 import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.ServerboundPackets1_13;
-import com.viaversion.viaversion.protocols.protocol1_9_3to1_9_1_2.storage.ClientWorld;
+import com.viaversion.viaversion.rewriter.ComponentRewriter;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 public class Protocol1_12_2To1_13 extends BackwardsProtocol<ClientboundPackets1_13, ClientboundPackets1_12_1, ServerboundPackets1_13, ServerboundPackets1_12_1> {
@@ -54,7 +55,7 @@ public class Protocol1_12_2To1_13 extends BackwardsProtocol<ClientboundPackets1_
     public static final BackwardsMappings MAPPINGS = new BackwardsMappings();
     private final EntityPackets1_13 entityRewriter = new EntityPackets1_13(this);
     private final BlockItemPackets1_13 blockItemPackets = new BlockItemPackets1_13(this);
-    private final TranslatableRewriter<ClientboundPackets1_13> translatableRewriter = new TranslatableRewriter<ClientboundPackets1_13>(this) {
+    private final TranslatableRewriter<ClientboundPackets1_13> translatableRewriter = new TranslatableRewriter<ClientboundPackets1_13>(this, ComponentRewriter.ReadType.JSON) {
         @Override
         protected void handleTranslate(JsonObject root, String translate) {
             String mappedKey = mappedTranslationKey(translate);
@@ -63,7 +64,7 @@ public class Protocol1_12_2To1_13 extends BackwardsProtocol<ClientboundPackets1_
             }
         }
     };
-    private final TranslatableRewriter<ClientboundPackets1_13> translatableToLegacyRewriter = new TranslatableRewriter<ClientboundPackets1_13>(this) {
+    private final TranslatableRewriter<ClientboundPackets1_13> translatableToLegacyRewriter = new TranslatableRewriter<ClientboundPackets1_13>(this, ComponentRewriter.ReadType.JSON) {
         @Override
         protected void handleTranslate(JsonObject root, String translate) {
             String mappedKey = mappedTranslationKey(translate);
@@ -89,7 +90,7 @@ public class Protocol1_12_2To1_13 extends BackwardsProtocol<ClientboundPackets1_
         translatableRewriter.registerBossBar(ClientboundPackets1_13.BOSSBAR);
         translatableRewriter.registerComponentPacket(ClientboundPackets1_13.CHAT_MESSAGE);
         translatableRewriter.registerLegacyOpenWindow(ClientboundPackets1_13.OPEN_WINDOW);
-        translatableRewriter.registerDisconnect(ClientboundPackets1_13.DISCONNECT);
+        translatableRewriter.registerComponentPacket(ClientboundPackets1_13.DISCONNECT);
         translatableRewriter.registerCombatEvent(ClientboundPackets1_13.COMBAT_EVENT);
         translatableRewriter.registerTitle(ClientboundPackets1_13.TITLE);
         translatableRewriter.registerTabList(ClientboundPackets1_13.TAB_LIST);
@@ -114,10 +115,10 @@ public class Protocol1_12_2To1_13 extends BackwardsProtocol<ClientboundPackets1_
     public void init(UserConnection user) {
         // Register ClientWorld
         if (!user.has(ClientWorld.class)) {
-            user.put(new ClientWorld(user));
+            user.put(new ClientWorld());
         }
 
-        user.addEntityTracker(this.getClass(), new EntityTrackerBase(user, Entity1_13Types.EntityType.PLAYER));
+        user.addEntityTracker(this.getClass(), new EntityTrackerBase(user, EntityTypes1_13.EntityType.PLAYER));
 
         user.put(new BackwardsBlockStorage());
         user.put(new TabCompleteStorage());

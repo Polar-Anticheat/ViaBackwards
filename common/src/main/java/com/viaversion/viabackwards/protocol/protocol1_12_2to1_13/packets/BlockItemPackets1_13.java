@@ -28,6 +28,7 @@ import com.viaversion.viabackwards.protocol.protocol1_12_2to1_13.storage.Backwar
 import com.viaversion.viaversion.api.Via;
 import com.viaversion.viaversion.api.connection.UserConnection;
 import com.viaversion.viaversion.api.minecraft.BlockChangeRecord;
+import com.viaversion.viaversion.api.minecraft.ClientWorld;
 import com.viaversion.viaversion.api.minecraft.Position;
 import com.viaversion.viaversion.api.minecraft.chunks.Chunk;
 import com.viaversion.viaversion.api.minecraft.chunks.ChunkSection;
@@ -37,15 +38,10 @@ import com.viaversion.viaversion.api.minecraft.item.Item;
 import com.viaversion.viaversion.api.protocol.packet.PacketWrapper;
 import com.viaversion.viaversion.api.protocol.remapper.PacketHandlers;
 import com.viaversion.viaversion.api.type.Type;
+import com.viaversion.viaversion.api.type.types.chunk.ChunkType1_13;
+import com.viaversion.viaversion.api.type.types.chunk.ChunkType1_9_3;
 import com.viaversion.viaversion.libs.opennbt.conversion.ConverterRegistry;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.ByteTag;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.CompoundTag;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.IntTag;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.ListTag;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.NumberTag;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.ShortTag;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.StringTag;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.Tag;
+import com.viaversion.viaversion.libs.opennbt.tag.builtin.*;
 import com.viaversion.viaversion.protocols.protocol1_12_1to1_12.ClientboundPackets1_12_1;
 import com.viaversion.viaversion.protocols.protocol1_12_1to1_12.ServerboundPackets1_12_1;
 import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.ChatRewriter;
@@ -53,16 +49,9 @@ import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.ClientboundPacke
 import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.Protocol1_13To1_12_2;
 import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.data.BlockIdData;
 import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.data.SpawnEggRewriter;
-import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.types.Chunk1_13Type;
-import com.viaversion.viaversion.protocols.protocol1_9_3to1_9_1_2.storage.ClientWorld;
-import com.viaversion.viaversion.protocols.protocol1_9_3to1_9_1_2.types.Chunk1_9_3_4Type;
 import com.viaversion.viaversion.util.Key;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
+
+import java.util.*;
 
 public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewriters.ItemRewriter<ClientboundPackets1_13, ServerboundPackets1_12_1, Protocol1_12_2To1_13> {
 
@@ -109,7 +98,7 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
         protocol.registerClientbound(ClientboundPackets1_13.BLOCK_ACTION, new PacketHandlers() {
             @Override
             public void register() {
-                map(Type.POSITION); // Location
+                map(Type.POSITION1_8); // Location
                 map(Type.UNSIGNED_BYTE); // Action Id
                 map(Type.UNSIGNED_BYTE); // Action param
                 map(Type.VAR_INT); // Block Id - /!\ NOT BLOCK STATE ID
@@ -145,9 +134,9 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
         protocol.registerClientbound(ClientboundPackets1_13.BLOCK_ENTITY_DATA, new PacketHandlers() {
             @Override
             public void register() {
-                map(Type.POSITION); // 0 - Position
+                map(Type.POSITION1_8); // 0 - Position
                 map(Type.UNSIGNED_BYTE); // 1 - Action
-                map(Type.NBT); // 2 - NBT Data
+                map(Type.NAMED_COMPOUND_TAG); // 2 - NBT Data
 
                 handler(wrapper -> {
                     BackwardsBlockEntityProvider provider = Via.getManager().getProviders().get(BackwardsBlockEntityProvider.class);
@@ -157,11 +146,11 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
                         wrapper.cancel();
                     }
 
-                    wrapper.set(Type.NBT, 0,
+                    wrapper.set(Type.NAMED_COMPOUND_TAG, 0,
                             provider.transform(
                                     wrapper.user(),
-                                    wrapper.get(Type.POSITION, 0),
-                                    wrapper.get(Type.NBT, 0)
+                                    wrapper.get(Type.POSITION1_8, 0),
+                                    wrapper.get(Type.NAMED_COMPOUND_TAG, 0)
                             ));
                 });
             }
@@ -184,11 +173,11 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
         protocol.registerClientbound(ClientboundPackets1_13.BLOCK_CHANGE, new PacketHandlers() {
             @Override
             public void register() {
-                map(Type.POSITION); // 0 - Position
+                map(Type.POSITION1_8); // 0 - Position
 
                 handler(wrapper -> {
                     int blockState = wrapper.read(Type.VAR_INT);
-                    Position position = wrapper.get(Type.POSITION, 0);
+                    Position position = wrapper.get(Type.POSITION1_8, 0);
 
                     // Store blocks
                     BackwardsBlockStorage storage = wrapper.user().get(BackwardsBlockStorage.class);
@@ -238,9 +227,9 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
             @Override
             public void register() {
                 map(Type.UNSIGNED_BYTE);
-                map(Type.FLAT_ITEM_ARRAY, Type.ITEM_ARRAY);
+                map(Type.ITEM1_13_ARRAY, Type.ITEM1_8_SHORT_ARRAY);
 
-                handler(itemArrayToClientHandler(Type.ITEM_ARRAY));
+                handler(itemArrayToClientHandler(Type.ITEM1_8_SHORT_ARRAY));
             }
         });
 
@@ -249,17 +238,17 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
             public void register() {
                 map(Type.UNSIGNED_BYTE);
                 map(Type.SHORT);
-                map(Type.FLAT_ITEM, Type.ITEM);
+                map(Type.ITEM1_13, Type.ITEM1_8);
 
-                handler(itemToClientHandler(Type.ITEM));
+                handler(itemToClientHandler(Type.ITEM1_8));
             }
         });
 
         protocol.registerClientbound(ClientboundPackets1_13.CHUNK_DATA, wrapper -> {
             ClientWorld clientWorld = wrapper.user().get(ClientWorld.class);
 
-            Chunk1_9_3_4Type type_old = new Chunk1_9_3_4Type(clientWorld);
-            Chunk1_13Type type = new Chunk1_13Type(clientWorld);
+            ChunkType1_9_3 type_old = ChunkType1_9_3.forEnvironment(clientWorld.getEnvironment());
+            ChunkType1_13 type = ChunkType1_13.forEnvironment(clientWorld.getEnvironment());
             Chunk chunk = wrapper.read(type);
 
             // Handle Block Entities before block rewrite
@@ -371,7 +360,7 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
             @Override
             public void register() {
                 map(Type.INT); // Effect Id
-                map(Type.POSITION); // Location
+                map(Type.POSITION1_8); // Location
                 map(Type.INT); // Data
                 handler(wrapper -> {
                     int id = wrapper.get(Type.INT, 0);
@@ -421,9 +410,9 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
             public void register() {
                 map(Type.VAR_INT);
                 map(Type.VAR_INT);
-                map(Type.FLAT_ITEM, Type.ITEM);
+                map(Type.ITEM1_13, Type.ITEM1_8);
 
-                handler(itemToClientHandler(Type.ITEM));
+                handler(itemToClientHandler(Type.ITEM1_8));
             }
         });
 
@@ -449,9 +438,9 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
             @Override
             public void register() {
                 map(Type.SHORT);
-                map(Type.ITEM, Type.FLAT_ITEM);
+                map(Type.ITEM1_8, Type.ITEM1_13);
 
-                handler(itemToServerHandler(Type.FLAT_ITEM));
+                handler(itemToServerHandler(Type.ITEM1_13));
             }
         });
 
@@ -463,9 +452,9 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
                 map(Type.BYTE);
                 map(Type.SHORT);
                 map(Type.VAR_INT);
-                map(Type.ITEM, Type.FLAT_ITEM);
+                map(Type.ITEM1_8, Type.ITEM1_13);
 
-                handler(itemToServerHandler(Type.FLAT_ITEM));
+                handler(itemToServerHandler(Type.ITEM1_13));
             }
         });
     }
@@ -592,7 +581,7 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
         for (Tag oldTag : blockTag) {
             Object value = oldTag.getValue();
             String[] newValues = value instanceof String ?
-                    BlockIdData.fallbackReverseMapping.get(((String) value).replace("minecraft:", "")) : null;
+                    BlockIdData.fallbackReverseMapping.get(Key.stripMinecraftNamespace((String) value)) : null;
             if (newValues != null) {
                 for (String newValue : newValues) {
                     newCanPlaceOn.add(new StringTag(newValue));
@@ -843,7 +832,7 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
             ListTag newCanPlaceOn = new ListTag(StringTag.class);
             for (Tag oldTag : blockTag) {
                 Object value = oldTag.getValue();
-                String oldId = value.toString().replace("minecraft:", "");
+                String oldId = Key.stripMinecraftNamespace(value.toString());
                 int key = Ints.tryParse(oldId);
                 String numberConverted = BlockIdData.numberIdToString.get(key);
                 if (numberConverted != null) {
@@ -966,21 +955,21 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
 
             // Remove the flowerpot
             PacketWrapper blockUpdateRemove = PacketWrapper.create(ClientboundPackets1_12_1.BLOCK_CHANGE, user);
-            blockUpdateRemove.write(Type.POSITION, position);
+            blockUpdateRemove.write(Type.POSITION1_8, position);
             blockUpdateRemove.write(Type.VAR_INT, 0);
             blockUpdateRemove.scheduleSend(Protocol1_12_2To1_13.class);
 
             // Create the flowerpot
             PacketWrapper blockCreate = PacketWrapper.create(ClientboundPackets1_12_1.BLOCK_CHANGE, user);
-            blockCreate.write(Type.POSITION, position);
+            blockCreate.write(Type.POSITION1_8, position);
             blockCreate.write(Type.VAR_INT, Protocol1_12_2To1_13.MAPPINGS.getNewBlockStateId(blockState));
             blockCreate.scheduleSend(Protocol1_12_2To1_13.class);
 
             // Send a block entity update
             PacketWrapper wrapper = PacketWrapper.create(ClientboundPackets1_12_1.BLOCK_ENTITY_DATA, user);
-            wrapper.write(Type.POSITION, position);
+            wrapper.write(Type.POSITION1_8, position);
             wrapper.write(Type.UNSIGNED_BYTE, (short) 5);
-            wrapper.write(Type.NBT, nbt);
+            wrapper.write(Type.NAMED_COMPOUND_TAG, nbt);
             wrapper.scheduleSend(Protocol1_12_2To1_13.class);
 
         }

@@ -20,13 +20,13 @@ package com.viaversion.viabackwards.protocol.protocol1_16_4to1_17.packets;
 import com.viaversion.viabackwards.ViaBackwards;
 import com.viaversion.viabackwards.api.rewriters.EntityRewriter;
 import com.viaversion.viabackwards.protocol.protocol1_16_4to1_17.Protocol1_16_4To1_17;
-import com.viaversion.viaversion.api.minecraft.entities.Entity1_16_2Types;
-import com.viaversion.viaversion.api.minecraft.entities.Entity1_17Types;
+import com.viaversion.viaversion.api.minecraft.Particle;
 import com.viaversion.viaversion.api.minecraft.entities.EntityType;
+import com.viaversion.viaversion.api.minecraft.entities.EntityTypes1_16_2;
+import com.viaversion.viaversion.api.minecraft.entities.EntityTypes1_17;
 import com.viaversion.viaversion.api.minecraft.metadata.MetaType;
 import com.viaversion.viaversion.api.protocol.remapper.PacketHandlers;
 import com.viaversion.viaversion.api.type.Type;
-import com.viaversion.viaversion.api.type.types.Particle;
 import com.viaversion.viaversion.api.type.types.version.Types1_16;
 import com.viaversion.viaversion.api.type.types.version.Types1_17;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.CompoundTag;
@@ -47,11 +47,11 @@ public final class EntityPackets1_17 extends EntityRewriter<ClientboundPackets1_
 
     @Override
     protected void registerPackets() {
-        registerTrackerWithData(ClientboundPackets1_17.SPAWN_ENTITY, Entity1_17Types.FALLING_BLOCK);
+        registerTrackerWithData(ClientboundPackets1_17.SPAWN_ENTITY, EntityTypes1_17.FALLING_BLOCK);
         registerSpawnTracker(ClientboundPackets1_17.SPAWN_MOB);
-        registerTracker(ClientboundPackets1_17.SPAWN_EXPERIENCE_ORB, Entity1_17Types.EXPERIENCE_ORB);
-        registerTracker(ClientboundPackets1_17.SPAWN_PAINTING, Entity1_17Types.PAINTING);
-        registerTracker(ClientboundPackets1_17.SPAWN_PLAYER, Entity1_17Types.PLAYER);
+        registerTracker(ClientboundPackets1_17.SPAWN_EXPERIENCE_ORB, EntityTypes1_17.EXPERIENCE_ORB);
+        registerTracker(ClientboundPackets1_17.SPAWN_PAINTING, EntityTypes1_17.PAINTING);
+        registerTracker(ClientboundPackets1_17.SPAWN_PLAYER, EntityTypes1_17.PLAYER);
         registerMetadataRewriter(ClientboundPackets1_17.ENTITY_METADATA, Types1_17.METADATA_LIST, Types1_16.METADATA_LIST);
 
         protocol.registerClientbound(ClientboundPackets1_17.REMOVE_ENTITY, ClientboundPackets1_16_2.DESTROY_ENTITIES, wrapper -> {
@@ -71,8 +71,8 @@ public final class EntityPackets1_17 extends EntityRewriter<ClientboundPackets1_
                 map(Type.UNSIGNED_BYTE); // Gamemode
                 map(Type.BYTE); // Previous Gamemode
                 map(Type.STRING_ARRAY); // Worlds
-                map(Type.NBT); // Dimension registry
-                map(Type.NBT); // Current dimension data
+                map(Type.NAMED_COMPOUND_TAG); // Dimension registry
+                map(Type.NAMED_COMPOUND_TAG); // Current dimension data
                 map(Type.STRING); // World
                 handler(wrapper -> {
                     byte previousGamemode = wrapper.get(Type.BYTE, 0);
@@ -80,10 +80,10 @@ public final class EntityPackets1_17 extends EntityRewriter<ClientboundPackets1_
                         wrapper.set(Type.BYTE, 0, (byte) 0);
                     }
                 });
-                handler(getTrackerHandler(Entity1_17Types.PLAYER, Type.INT));
+                handler(getTrackerHandler(EntityTypes1_17.PLAYER, Type.INT));
                 handler(worldDataTrackerHandler(1));
                 handler(wrapper -> {
-                    CompoundTag registry = wrapper.get(Type.NBT, 0);
+                    CompoundTag registry = wrapper.get(Type.NAMED_COMPOUND_TAG, 0);
                     CompoundTag biomeRegistry = registry.get("minecraft:worldgen/biome");
                     ListTag biomes = biomeRegistry.get("value");
                     for (Tag biome : biomes) {
@@ -101,7 +101,7 @@ public final class EntityPackets1_17 extends EntityRewriter<ClientboundPackets1_
                         reduceExtendedHeight(dimensionCompound, false);
                     }
 
-                    reduceExtendedHeight(wrapper.get(Type.NBT, 1), true);
+                    reduceExtendedHeight(wrapper.get(Type.NAMED_COMPOUND_TAG, 1), true);
                 });
             }
         });
@@ -109,10 +109,10 @@ public final class EntityPackets1_17 extends EntityRewriter<ClientboundPackets1_
         protocol.registerClientbound(ClientboundPackets1_17.RESPAWN, new PacketHandlers() {
             @Override
             public void register() {
-                map(Type.NBT); // Dimension data
+                map(Type.NAMED_COMPOUND_TAG); // Dimension data
                 map(Type.STRING); // World
                 handler(worldDataTrackerHandler(0));
-                handler(wrapper -> reduceExtendedHeight(wrapper.get(Type.NBT, 0), true));
+                handler(wrapper -> reduceExtendedHeight(wrapper.get(Type.NAMED_COMPOUND_TAG, 0), true));
             }
         });
 
@@ -183,29 +183,29 @@ public final class EntityPackets1_17 extends EntityRewriter<ClientboundPackets1_
         registerMetaTypeHandler(Types1_16.META_TYPES.itemType, Types1_16.META_TYPES.blockStateType, null, null,
                 Types1_16.META_TYPES.componentType, Types1_16.META_TYPES.optionalComponentType);
 
-        mapTypes(Entity1_17Types.values(), Entity1_16_2Types.class);
-        filter().type(Entity1_17Types.AXOLOTL).cancel(17);
-        filter().type(Entity1_17Types.AXOLOTL).cancel(18);
-        filter().type(Entity1_17Types.AXOLOTL).cancel(19);
+        mapTypes(EntityTypes1_17.values(), EntityTypes1_16_2.class);
+        filter().type(EntityTypes1_17.AXOLOTL).cancel(17);
+        filter().type(EntityTypes1_17.AXOLOTL).cancel(18);
+        filter().type(EntityTypes1_17.AXOLOTL).cancel(19);
 
-        filter().type(Entity1_17Types.GLOW_SQUID).cancel(16);
+        filter().type(EntityTypes1_17.GLOW_SQUID).cancel(16);
 
-        filter().type(Entity1_17Types.GOAT).cancel(17);
+        filter().type(EntityTypes1_17.GOAT).cancel(17);
 
-        mapEntityTypeWithData(Entity1_17Types.AXOLOTL, Entity1_17Types.TROPICAL_FISH).jsonName();
-        mapEntityTypeWithData(Entity1_17Types.GOAT, Entity1_17Types.SHEEP).jsonName();
+        mapEntityTypeWithData(EntityTypes1_17.AXOLOTL, EntityTypes1_17.TROPICAL_FISH).jsonName();
+        mapEntityTypeWithData(EntityTypes1_17.GOAT, EntityTypes1_17.SHEEP).jsonName();
 
-        mapEntityTypeWithData(Entity1_17Types.GLOW_SQUID, Entity1_17Types.SQUID).jsonName();
-        mapEntityTypeWithData(Entity1_17Types.GLOW_ITEM_FRAME, Entity1_17Types.ITEM_FRAME);
+        mapEntityTypeWithData(EntityTypes1_17.GLOW_SQUID, EntityTypes1_17.SQUID).jsonName();
+        mapEntityTypeWithData(EntityTypes1_17.GLOW_ITEM_FRAME, EntityTypes1_17.ITEM_FRAME);
 
-        filter().type(Entity1_17Types.SHULKER).addIndex(17); // TODO Handle attachment pos?
+        filter().type(EntityTypes1_17.SHULKER).addIndex(17); // TODO Handle attachment pos?
 
         filter().removeIndex(7); // Ticks frozen
     }
 
     @Override
     public EntityType typeFromId(int typeId) {
-        return Entity1_17Types.getTypeFromId(typeId);
+        return EntityTypes1_17.getTypeFromId(typeId);
     }
 
     private void reduceExtendedHeight(CompoundTag tag, boolean warn) {

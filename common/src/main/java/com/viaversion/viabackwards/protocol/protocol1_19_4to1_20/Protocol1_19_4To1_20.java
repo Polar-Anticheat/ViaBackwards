@@ -25,11 +25,12 @@ import com.viaversion.viabackwards.protocol.protocol1_19_4to1_20.packets.BlockIt
 import com.viaversion.viabackwards.protocol.protocol1_19_4to1_20.packets.EntityPackets1_20;
 import com.viaversion.viaversion.api.connection.UserConnection;
 import com.viaversion.viaversion.api.minecraft.RegistryType;
-import com.viaversion.viaversion.api.minecraft.entities.Entity1_19_4Types;
+import com.viaversion.viaversion.api.minecraft.entities.EntityTypes1_19_4;
 import com.viaversion.viaversion.api.type.Type;
 import com.viaversion.viaversion.data.entity.EntityTrackerBase;
 import com.viaversion.viaversion.protocols.protocol1_19_4to1_19_3.ClientboundPackets1_19_4;
 import com.viaversion.viaversion.protocols.protocol1_19_4to1_19_3.ServerboundPackets1_19_4;
+import com.viaversion.viaversion.rewriter.ComponentRewriter;
 import com.viaversion.viaversion.rewriter.StatisticsRewriter;
 import com.viaversion.viaversion.rewriter.TagRewriter;
 import java.util.Arrays;
@@ -37,7 +38,7 @@ import java.util.Arrays;
 public final class Protocol1_19_4To1_20 extends BackwardsProtocol<ClientboundPackets1_19_4, ClientboundPackets1_19_4, ServerboundPackets1_19_4, ServerboundPackets1_19_4> {
 
     public static final BackwardsMappings MAPPINGS = new BackwardsMappings();
-    private final TranslatableRewriter<ClientboundPackets1_19_4> translatableRewriter = new TranslatableRewriter<>(this);
+    private final TranslatableRewriter<ClientboundPackets1_19_4> translatableRewriter = new TranslatableRewriter<>(this, ComponentRewriter.ReadType.JSON);
     private final EntityPackets1_20 entityRewriter = new EntityPackets1_20(this);
     private final BlockItemPackets1_20 itemRewriter = new BlockItemPackets1_20(this);
 
@@ -65,7 +66,7 @@ public final class Protocol1_19_4To1_20 extends BackwardsProtocol<ClientboundPac
         translatableRewriter.registerComponentPacket(ClientboundPackets1_19_4.TITLE_TEXT);
         translatableRewriter.registerComponentPacket(ClientboundPackets1_19_4.TITLE_SUBTITLE);
         translatableRewriter.registerBossBar(ClientboundPackets1_19_4.BOSSBAR);
-        translatableRewriter.registerDisconnect(ClientboundPackets1_19_4.DISCONNECT);
+        translatableRewriter.registerComponentPacket(ClientboundPackets1_19_4.DISCONNECT);
         translatableRewriter.registerTabList(ClientboundPackets1_19_4.TAB_LIST);
         translatableRewriter.registerComponentPacket(ClientboundPackets1_19_4.SYSTEM_CHAT);
         translatableRewriter.registerComponentPacket(ClientboundPackets1_19_4.DISGUISED_CHAT);
@@ -92,7 +93,7 @@ public final class Protocol1_19_4To1_20 extends BackwardsProtocol<ClientboundPac
 
     @Override
     public void init(final UserConnection user) {
-        addEntityTracker(user, new EntityTrackerBase(user, Entity1_19_4Types.PLAYER));
+        addEntityTracker(user, new EntityTrackerBase(user, EntityTypes1_19_4.PLAYER));
     }
 
     @Override

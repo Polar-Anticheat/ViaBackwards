@@ -27,8 +27,9 @@ import com.viaversion.viabackwards.protocol.protocol1_15_2to1_16.packets.BlockIt
 import com.viaversion.viabackwards.protocol.protocol1_15_2to1_16.packets.EntityPackets1_16;
 import com.viaversion.viabackwards.protocol.protocol1_15_2to1_16.storage.PlayerSneakStorage;
 import com.viaversion.viaversion.api.connection.UserConnection;
+import com.viaversion.viaversion.api.minecraft.ClientWorld;
 import com.viaversion.viaversion.api.minecraft.RegistryType;
-import com.viaversion.viaversion.api.minecraft.entities.Entity1_16Types;
+import com.viaversion.viaversion.api.minecraft.entities.EntityTypes1_16;
 import com.viaversion.viaversion.api.protocol.packet.State;
 import com.viaversion.viaversion.api.protocol.remapper.PacketHandlers;
 import com.viaversion.viaversion.api.type.Type;
@@ -39,7 +40,6 @@ import com.viaversion.viaversion.protocols.protocol1_14to1_13_2.ServerboundPacke
 import com.viaversion.viaversion.protocols.protocol1_15to1_14_4.ClientboundPackets1_15;
 import com.viaversion.viaversion.protocols.protocol1_16to1_15_2.ClientboundPackets1_16;
 import com.viaversion.viaversion.protocols.protocol1_16to1_15_2.ServerboundPackets1_16;
-import com.viaversion.viaversion.protocols.protocol1_9_3to1_9_1_2.storage.ClientWorld;
 import com.viaversion.viaversion.rewriter.StatisticsRewriter;
 import com.viaversion.viaversion.rewriter.TagRewriter;
 import com.viaversion.viaversion.util.GsonUtil;
@@ -62,7 +62,7 @@ public class Protocol1_15_2To1_16 extends BackwardsProtocol<ClientboundPackets1_
 
         translatableRewriter.registerBossBar(ClientboundPackets1_16.BOSSBAR);
         translatableRewriter.registerCombatEvent(ClientboundPackets1_16.COMBAT_EVENT);
-        translatableRewriter.registerDisconnect(ClientboundPackets1_16.DISCONNECT);
+        translatableRewriter.registerComponentPacket(ClientboundPackets1_16.DISCONNECT);
         translatableRewriter.registerTabList(ClientboundPackets1_16.TAB_LIST);
         translatableRewriter.registerTitle(ClientboundPackets1_16.TITLE);
         translatableRewriter.registerPing();
@@ -84,7 +84,7 @@ public class Protocol1_15_2To1_16 extends BackwardsProtocol<ClientboundPackets1_
             public void register() {
                 handler(wrapper -> translatableRewriter.processText(wrapper.passthrough(Type.COMPONENT)));
                 map(Type.BYTE);
-                map(Type.UUID, Type.NOTHING); // Sender
+                read(Type.UUID); // Sender
             }
         });
 
@@ -165,12 +165,12 @@ public class Protocol1_15_2To1_16 extends BackwardsProtocol<ClientboundPackets1_
     @Override
     public void init(UserConnection user) {
         if (!user.has(ClientWorld.class)) {
-            user.put(new ClientWorld(user));
+            user.put(new ClientWorld());
         }
 
         user.put(new PlayerSneakStorage());
         user.put(new WorldNameTracker());
-        user.addEntityTracker(this.getClass(), new EntityTrackerBase(user, Entity1_16Types.PLAYER));
+        user.addEntityTracker(this.getClass(), new EntityTrackerBase(user, EntityTypes1_16.PLAYER));
     }
 
     @Override

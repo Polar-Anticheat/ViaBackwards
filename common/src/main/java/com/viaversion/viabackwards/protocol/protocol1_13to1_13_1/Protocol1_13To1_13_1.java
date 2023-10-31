@@ -26,8 +26,9 @@ import com.viaversion.viabackwards.protocol.protocol1_13to1_13_1.packets.EntityP
 import com.viaversion.viabackwards.protocol.protocol1_13to1_13_1.packets.InventoryPackets1_13_1;
 import com.viaversion.viabackwards.protocol.protocol1_13to1_13_1.packets.WorldPackets1_13_1;
 import com.viaversion.viaversion.api.connection.UserConnection;
+import com.viaversion.viaversion.api.minecraft.ClientWorld;
 import com.viaversion.viaversion.api.minecraft.RegistryType;
-import com.viaversion.viaversion.api.minecraft.entities.Entity1_13Types;
+import com.viaversion.viaversion.api.minecraft.entities.EntityTypes1_13;
 import com.viaversion.viaversion.api.minecraft.item.Item;
 import com.viaversion.viaversion.api.protocol.packet.PacketWrapper;
 import com.viaversion.viaversion.api.protocol.remapper.PacketHandlers;
@@ -40,7 +41,7 @@ import com.viaversion.viaversion.protocols.protocol1_13_1to1_13.Protocol1_13_1To
 import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.ChatRewriter;
 import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.ClientboundPackets1_13;
 import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.ServerboundPackets1_13;
-import com.viaversion.viaversion.protocols.protocol1_9_3to1_9_1_2.storage.ClientWorld;
+import com.viaversion.viaversion.rewriter.ComponentRewriter;
 import com.viaversion.viaversion.rewriter.StatisticsRewriter;
 import com.viaversion.viaversion.rewriter.TagRewriter;
 
@@ -49,7 +50,7 @@ public class Protocol1_13To1_13_1 extends BackwardsProtocol<ClientboundPackets1_
     public static final BackwardsMappings MAPPINGS = new BackwardsMappings("1.13.2", "1.13", Protocol1_13_1To1_13.class);
     private final EntityPackets1_13_1 entityRewriter = new EntityPackets1_13_1(this);
     private final InventoryPackets1_13_1 itemRewriter = new InventoryPackets1_13_1(this);
-    private final TranslatableRewriter<ClientboundPackets1_13> translatableRewriter = new TranslatableRewriter<>(this);
+    private final TranslatableRewriter<ClientboundPackets1_13> translatableRewriter = new TranslatableRewriter<>(this, ComponentRewriter.ReadType.JSON);
 
     public Protocol1_13To1_13_1() {
         super(ClientboundPackets1_13.class, ClientboundPackets1_13.class, ServerboundPackets1_13.class, ServerboundPackets1_13.class);
@@ -63,7 +64,7 @@ public class Protocol1_13To1_13_1 extends BackwardsProtocol<ClientboundPackets1_
 
         translatableRewriter.registerComponentPacket(ClientboundPackets1_13.CHAT_MESSAGE);
         translatableRewriter.registerCombatEvent(ClientboundPackets1_13.COMBAT_EVENT);
-        translatableRewriter.registerDisconnect(ClientboundPackets1_13.DISCONNECT);
+        translatableRewriter.registerComponentPacket(ClientboundPackets1_13.DISCONNECT);
         translatableRewriter.registerTabList(ClientboundPackets1_13.TAB_LIST);
         translatableRewriter.registerTitle(ClientboundPackets1_13.TITLE);
         translatableRewriter.registerPing();
@@ -87,10 +88,10 @@ public class Protocol1_13To1_13_1 extends BackwardsProtocol<ClientboundPackets1_
         registerServerbound(ServerboundPackets1_13.EDIT_BOOK, new PacketHandlers() {
             @Override
             public void register() {
-                map(Type.FLAT_ITEM);
+                map(Type.ITEM1_13);
                 map(Type.BOOLEAN);
                 handler(wrapper -> {
-                    itemRewriter.handleItemToServer(wrapper.get(Type.FLAT_ITEM, 0));
+                    itemRewriter.handleItemToServer(wrapper.get(Type.ITEM1_13, 0));
                     wrapper.write(Type.VAR_INT, 0);
                 });
             }
@@ -181,7 +182,7 @@ public class Protocol1_13To1_13_1 extends BackwardsProtocol<ClientboundPackets1_
                 if (wrapper.passthrough(Type.BOOLEAN)) {
                     wrapper.passthrough(Type.COMPONENT); // Title
                     wrapper.passthrough(Type.COMPONENT); // Description
-                    Item icon = wrapper.passthrough(Type.FLAT_ITEM);
+                    Item icon = wrapper.passthrough(Type.ITEM1_13);
                     itemRewriter.handleItemToClient(icon);
                     wrapper.passthrough(Type.VAR_INT); // Frame type
                     int flags = wrapper.passthrough(Type.INT); // Flags
@@ -206,10 +207,10 @@ public class Protocol1_13To1_13_1 extends BackwardsProtocol<ClientboundPackets1_
 
     @Override
     public void init(UserConnection user) {
-        user.addEntityTracker(getClass(), new EntityTrackerBase(user, Entity1_13Types.EntityType.PLAYER));
+        user.addEntityTracker(getClass(), new EntityTrackerBase(user, EntityTypes1_13.EntityType.PLAYER));
 
         if (!user.has(ClientWorld.class)) {
-            user.put(new ClientWorld(user));
+            user.put(new ClientWorld());
         }
     }
 

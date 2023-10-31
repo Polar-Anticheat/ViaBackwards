@@ -24,7 +24,7 @@ import com.viaversion.viabackwards.protocol.protocol1_20to1_20_2.rewriter.BlockI
 import com.viaversion.viabackwards.protocol.protocol1_20to1_20_2.rewriter.EntityPacketRewriter1_20_2;
 import com.viaversion.viabackwards.protocol.protocol1_20to1_20_2.storage.ConfigurationPacketStorage;
 import com.viaversion.viaversion.api.connection.UserConnection;
-import com.viaversion.viaversion.api.minecraft.entities.Entity1_19_4Types;
+import com.viaversion.viaversion.api.minecraft.entities.EntityTypes1_19_4;
 import com.viaversion.viaversion.api.protocol.packet.Direction;
 import com.viaversion.viaversion.api.protocol.packet.PacketWrapper;
 import com.viaversion.viaversion.api.protocol.packet.State;
@@ -111,30 +111,46 @@ public final class Protocol1_20To1_20_2 extends BackwardsProtocol<ClientboundPac
         cancelClientbound(ClientboundPackets1_20_2.PONG_RESPONSE);
 
         // Some can be directly remapped to play packets, others need to be queued
-        registerClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_2.DISCONNECT.getId(), ClientboundPackets1_19_4.DISCONNECT.getId());
-        registerClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_2.KEEP_ALIVE.getId(), ClientboundPackets1_19_4.KEEP_ALIVE.getId());
-        registerClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_2.RESOURCE_PACK.getId(), ClientboundPackets1_19_4.RESOURCE_PACK.getId());
+        // Set the packet type properly so the state on it is changed
+        registerClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_2.DISCONNECT.getId(), -1, wrapper -> {
+            wrapper.setPacketType(ClientboundPackets1_19_4.DISCONNECT);
+        });
+        registerClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_2.KEEP_ALIVE.getId(), -1, wrapper -> {
+            wrapper.setPacketType(ClientboundPackets1_19_4.KEEP_ALIVE);
+        });
+        registerClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_2.RESOURCE_PACK.getId(), -1, wrapper -> {
+            // Send after join. We have to pretend the client accepted, else the server won't continue...
+            wrapper.user().get(ConfigurationPacketStorage.class).setResourcePack(wrapper);
+            wrapper.cancel();
+
+            final PacketWrapper acceptedResponse = wrapper.create(ServerboundConfigurationPackets1_20_2.RESOURCE_PACK);
+            acceptedResponse.write(Type.VAR_INT, 3);
+            acceptedResponse.sendToServer(Protocol1_20To1_20_2.class);
+
+            final PacketWrapper downloadedResponse = wrapper.create(ServerboundConfigurationPackets1_20_2.RESOURCE_PACK);
+            downloadedResponse.write(Type.VAR_INT, 0);
+            downloadedResponse.sendToServer(Protocol1_20To1_20_2.class);
+        });
         registerClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_2.REGISTRY_DATA.getId(), -1, wrapper -> {
             wrapper.cancel();
 
-            final CompoundTag registry = wrapper.read(Type.NAMELESS_NBT);
+            final CompoundTag registry = wrapper.read(Type.COMPOUND_TAG);
             entityPacketRewriter.trackBiomeSize(wrapper.user(), registry);
             entityPacketRewriter.cacheDimensionData(wrapper.user(), registry);
             wrapper.user().get(ConfigurationPacketStorage.class).setRegistry(registry);
         });
         registerClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_2.UPDATE_ENABLED_FEATURES.getId(), -1, wrapper -> {
-            wrapper.cancel();
-
             final String[] enabledFeatures = wrapper.read(Type.STRING_ARRAY);
             wrapper.user().get(ConfigurationPacketStorage.class).setEnabledFeatures(enabledFeatures);
+            wrapper.cancel();
         });
         registerClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_2.UPDATE_TAGS.getId(), -1, wrapper -> {
-            wrapper.cancel();
             wrapper.user().get(ConfigurationPacketStorage.class).addRawPacket(wrapper, ClientboundPackets1_19_4.TAGS);
+            wrapper.cancel();
         });
         registerClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_2.CUSTOM_PAYLOAD.getId(), -1, wrapper -> {
-            wrapper.cancel();
             wrapper.user().get(ConfigurationPacketStorage.class).addRawPacket(wrapper, ClientboundPackets1_19_4.PLUGIN_MESSAGE);
+            wrapper.cancel();
         });
     }
 
@@ -175,7 +191,7 @@ public final class Protocol1_20To1_20_2 extends BackwardsProtocol<ClientboundPac
 
     @Override
     public void init(final UserConnection connection) {
-        addEntityTracker(connection, new EntityTrackerBase(connection, Entity1_19_4Types.PLAYER));
+        addEntityTracker(connection, new EntityTrackerBase(connection, EntityTypes1_19_4.PLAYER));
     }
 
     @Override

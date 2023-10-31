@@ -28,14 +28,16 @@ import com.viaversion.viaversion.api.connection.UserConnection;
 import com.viaversion.viaversion.api.data.entity.EntityTracker;
 import com.viaversion.viaversion.api.data.entity.StoredEntityData;
 import com.viaversion.viaversion.api.minecraft.BlockChangeRecord;
+import com.viaversion.viaversion.api.minecraft.ClientWorld;
 import com.viaversion.viaversion.api.minecraft.chunks.Chunk;
-import com.viaversion.viaversion.api.minecraft.entities.Entity1_11Types;
+import com.viaversion.viaversion.api.minecraft.entities.EntityTypes1_11;
 import com.viaversion.viaversion.api.minecraft.item.DataItem;
 import com.viaversion.viaversion.api.minecraft.item.Item;
 import com.viaversion.viaversion.api.protocol.packet.PacketWrapper;
 import com.viaversion.viaversion.api.protocol.remapper.PacketHandler;
 import com.viaversion.viaversion.api.protocol.remapper.PacketHandlers;
 import com.viaversion.viaversion.api.type.Type;
+import com.viaversion.viaversion.api.type.types.chunk.ChunkType1_9_3;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.CompoundTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.ListTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.StringTag;
@@ -43,9 +45,6 @@ import com.viaversion.viaversion.libs.opennbt.tag.builtin.Tag;
 import com.viaversion.viaversion.protocols.protocol1_11to1_10.EntityIdRewriter;
 import com.viaversion.viaversion.protocols.protocol1_9_3to1_9_1_2.ClientboundPackets1_9_3;
 import com.viaversion.viaversion.protocols.protocol1_9_3to1_9_1_2.ServerboundPackets1_9_3;
-import com.viaversion.viaversion.protocols.protocol1_9_3to1_9_1_2.storage.ClientWorld;
-import com.viaversion.viaversion.protocols.protocol1_9_3to1_9_1_2.types.Chunk1_9_3_4Type;
-
 import java.util.Arrays;
 import java.util.Optional;
 
@@ -64,9 +63,9 @@ public class BlockItemPackets1_11 extends LegacyBlockItemRewriter<ClientboundPac
             public void register() {
                 map(Type.UNSIGNED_BYTE); // 0 - Window ID
                 map(Type.SHORT); // 1 - Slot ID
-                map(Type.ITEM); // 2 - Slot Value
+                map(Type.ITEM1_8); // 2 - Slot Value
 
-                handler(itemToClientHandler(Type.ITEM));
+                handler(itemToClientHandler(Type.ITEM1_8));
 
                 // Handle Llama
                 handler(new PacketHandler() {
@@ -79,7 +78,7 @@ public class BlockItemPackets1_11 extends LegacyBlockItemRewriter<ClientboundPac
                             ChestedHorseStorage storage = horse.get();
                             int currentSlot = wrapper.get(Type.SHORT, 0);
                             wrapper.set(Type.SHORT, 0, ((Integer) (currentSlot = getNewSlotId(storage, currentSlot))).shortValue());
-                            wrapper.set(Type.ITEM, 0, getNewItem(storage, currentSlot, wrapper.get(Type.ITEM, 0)));
+                            wrapper.set(Type.ITEM1_8, 0, getNewItem(storage, currentSlot, wrapper.get(Type.ITEM1_8, 0)));
                         }
                     }
                 });
@@ -90,10 +89,10 @@ public class BlockItemPackets1_11 extends LegacyBlockItemRewriter<ClientboundPac
             @Override
             public void register() {
                 map(Type.UNSIGNED_BYTE); // 0 - Window ID
-                map(Type.ITEM_ARRAY); // 1 - Window Values
+                map(Type.ITEM1_8_SHORT_ARRAY); // 1 - Window Values
 
                 handler(wrapper -> {
-                    Item[] stacks = wrapper.get(Type.ITEM_ARRAY, 0);
+                    Item[] stacks = wrapper.get(Type.ITEM1_8_SHORT_ARRAY, 0);
                     for (int i = 0; i < stacks.length; i++)
                         stacks[i] = handleItemToClient(stacks[i]);
 
@@ -108,13 +107,13 @@ public class BlockItemPackets1_11 extends LegacyBlockItemRewriter<ClientboundPac
                             stacks[getNewSlotId(storage, i)] = stacks[i];
                             stacks[i] = getNewItem(storage, i, stacks[i]);
                         }
-                        wrapper.set(Type.ITEM_ARRAY, 0, stacks);
+                        wrapper.set(Type.ITEM1_8_SHORT_ARRAY, 0, stacks);
                     }
                 });
             }
         });
 
-        registerEntityEquipment(ClientboundPackets1_9_3.ENTITY_EQUIPMENT, Type.ITEM);
+        registerEntityEquipment(ClientboundPackets1_9_3.ENTITY_EQUIPMENT, Type.ITEM1_8);
 
         // Plugin message Packet -> Trading
         protocol.registerClientbound(ClientboundPackets1_9_3.PLUGIN_MESSAGE, new PacketHandlers() {
@@ -128,12 +127,12 @@ public class BlockItemPackets1_11 extends LegacyBlockItemRewriter<ClientboundPac
 
                         int size = wrapper.passthrough(Type.UNSIGNED_BYTE);
                         for (int i = 0; i < size; i++) {
-                            wrapper.write(Type.ITEM, handleItemToClient(wrapper.read(Type.ITEM))); // Input Item
-                            wrapper.write(Type.ITEM, handleItemToClient(wrapper.read(Type.ITEM))); // Output Item
+                            wrapper.write(Type.ITEM1_8, handleItemToClient(wrapper.read(Type.ITEM1_8))); // Input Item
+                            wrapper.write(Type.ITEM1_8, handleItemToClient(wrapper.read(Type.ITEM1_8))); // Output Item
 
                             boolean secondItem = wrapper.passthrough(Type.BOOLEAN); // Has second item
                             if (secondItem) {
-                                wrapper.write(Type.ITEM, handleItemToClient(wrapper.read(Type.ITEM))); // Second Item
+                                wrapper.write(Type.ITEM1_8, handleItemToClient(wrapper.read(Type.ITEM1_8))); // Second Item
                             }
 
                             wrapper.passthrough(Type.BOOLEAN); // Trade disabled
@@ -153,9 +152,9 @@ public class BlockItemPackets1_11 extends LegacyBlockItemRewriter<ClientboundPac
                 map(Type.BYTE); // 2 - Button
                 map(Type.SHORT); // 3 - Action number
                 map(Type.VAR_INT); // 4 - Mode
-                map(Type.ITEM); // 5 - Clicked Item
+                map(Type.ITEM1_8); // 5 - Clicked Item
 
-                handler(itemToServerHandler(Type.ITEM));
+                handler(itemToServerHandler(Type.ITEM1_8));
 
                 // Llama slot
                 handler(wrapper -> {
@@ -173,12 +172,12 @@ public class BlockItemPackets1_11 extends LegacyBlockItemRewriter<ClientboundPac
             }
         });
 
-        registerCreativeInvAction(ServerboundPackets1_9_3.CREATIVE_INVENTORY_ACTION, Type.ITEM);
+        registerCreativeInvAction(ServerboundPackets1_9_3.CREATIVE_INVENTORY_ACTION, Type.ITEM1_8);
 
         protocol.registerClientbound(ClientboundPackets1_9_3.CHUNK_DATA, wrapper -> {
             ClientWorld clientWorld = wrapper.user().get(ClientWorld.class);
 
-            Chunk1_9_3_4Type type = new Chunk1_9_3_4Type(clientWorld); // Use the 1.10 Chunk type since nothing changed.
+            ChunkType1_9_3 type = ChunkType1_9_3.forEnvironment(clientWorld.getEnvironment()); // Use the 1.10 Chunk type since nothing changed.
             Chunk chunk = wrapper.passthrough(type);
 
             handleChunk(chunk);
@@ -198,7 +197,7 @@ public class BlockItemPackets1_11 extends LegacyBlockItemRewriter<ClientboundPac
         protocol.registerClientbound(ClientboundPackets1_9_3.BLOCK_CHANGE, new PacketHandlers() {
             @Override
             public void register() {
-                map(Type.POSITION); // 0 - Block Position
+                map(Type.POSITION1_8); // 0 - Block Position
                 map(Type.VAR_INT); // 1 - Block
 
                 handler(wrapper -> {
@@ -226,9 +225,9 @@ public class BlockItemPackets1_11 extends LegacyBlockItemRewriter<ClientboundPac
         protocol.registerClientbound(ClientboundPackets1_9_3.BLOCK_ENTITY_DATA, new PacketHandlers() {
             @Override
             public void register() {
-                map(Type.POSITION); // 0 - Position
+                map(Type.POSITION1_8); // 0 - Position
                 map(Type.UNSIGNED_BYTE); // 1 - Action
-                map(Type.NBT); // 2 - NBT
+                map(Type.NAMED_COMPOUND_TAG); // 2 - NBT
 
                 handler(wrapper -> {
                     // Remove on shulkerbox decleration
@@ -237,7 +236,7 @@ public class BlockItemPackets1_11 extends LegacyBlockItemRewriter<ClientboundPac
                     }
                     // Handler Spawners
                     if (wrapper.get(Type.UNSIGNED_BYTE, 0) == 1) {
-                        CompoundTag tag = wrapper.get(Type.NBT, 0);
+                        CompoundTag tag = wrapper.get(Type.NAMED_COMPOUND_TAG, 0);
                         EntityIdRewriter.toClientSpawner(tag, true);
                     }
                 });
@@ -299,7 +298,7 @@ public class BlockItemPackets1_11 extends LegacyBlockItemRewriter<ClientboundPac
         });
 
         protocol.getEntityRewriter().filter().handler((event, meta) -> {
-            if (meta.metaType().type().equals(Type.ITEM)) // Is Item
+            if (meta.metaType().type().equals(Type.ITEM1_8)) // Is Item
                 meta.setValue(handleItemToClient((Item) meta.getValue()));
         });
     }
@@ -365,7 +364,7 @@ public class BlockItemPackets1_11 extends LegacyBlockItemRewriter<ClientboundPac
         if (tracker.getInventory() != null && tracker.getInventory().equals("EntityHorse")) {
             EntityTracker entTracker = user.getEntityTracker(Protocol1_10To1_11.class);
             StoredEntityData entityData = entTracker.entityData(tracker.getEntityId());
-            return entityData != null && entityData.type().is(Entity1_11Types.EntityType.LIAMA);
+            return entityData != null && entityData.type().is(EntityTypes1_11.EntityType.LIAMA);
         }
         return false;
     }

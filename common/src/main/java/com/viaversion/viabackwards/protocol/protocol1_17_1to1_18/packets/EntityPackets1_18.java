@@ -19,12 +19,12 @@ package com.viaversion.viabackwards.protocol.protocol1_17_1to1_18.packets;
 
 import com.viaversion.viabackwards.api.rewriters.EntityRewriter;
 import com.viaversion.viabackwards.protocol.protocol1_17_1to1_18.Protocol1_17_1To1_18;
-import com.viaversion.viaversion.api.minecraft.entities.Entity1_17Types;
+import com.viaversion.viaversion.api.minecraft.Particle;
 import com.viaversion.viaversion.api.minecraft.entities.EntityType;
+import com.viaversion.viaversion.api.minecraft.entities.EntityTypes1_17;
 import com.viaversion.viaversion.api.minecraft.metadata.MetaType;
 import com.viaversion.viaversion.api.protocol.remapper.PacketHandlers;
 import com.viaversion.viaversion.api.type.Type;
-import com.viaversion.viaversion.api.type.types.Particle;
 import com.viaversion.viaversion.api.type.types.version.Types1_17;
 import com.viaversion.viaversion.api.type.types.version.Types1_18;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.CompoundTag;
@@ -52,8 +52,8 @@ public final class EntityPackets1_18 extends EntityRewriter<ClientboundPackets1_
                 map(Type.UNSIGNED_BYTE); // Gamemode
                 map(Type.BYTE); // Previous Gamemode
                 map(Type.STRING_ARRAY); // Worlds
-                map(Type.NBT); // Dimension registry
-                map(Type.NBT); // Current dimension data
+                map(Type.NAMED_COMPOUND_TAG); // Dimension registry
+                map(Type.NAMED_COMPOUND_TAG); // Current dimension data
                 map(Type.STRING); // World
                 map(Type.LONG); // Seed
                 map(Type.VAR_INT); // Max players
@@ -61,7 +61,7 @@ public final class EntityPackets1_18 extends EntityRewriter<ClientboundPackets1_
                 read(Type.VAR_INT); // Read simulation distance
                 handler(worldDataTrackerHandler(1));
                 handler(wrapper -> {
-                    final CompoundTag registry = wrapper.get(Type.NBT, 0);
+                    final CompoundTag registry = wrapper.get(Type.NAMED_COMPOUND_TAG, 0);
                     final CompoundTag biomeRegistry = registry.get("minecraft:worldgen/biome");
                     final ListTag biomes = biomeRegistry.get("value");
                     for (final Tag biome : biomes.getValue()) {
@@ -85,7 +85,7 @@ public final class EntityPackets1_18 extends EntityRewriter<ClientboundPackets1_
         protocol.registerClientbound(ClientboundPackets1_18.RESPAWN, new PacketHandlers() {
             @Override
             public void register() {
-                map(Type.NBT); // Dimension data
+                map(Type.NAMED_COMPOUND_TAG); // Dimension data
                 map(Type.STRING); // World
                 handler(worldDataTrackerHandler(0));
             }
@@ -99,9 +99,9 @@ public final class EntityPackets1_18 extends EntityRewriter<ClientboundPackets1_
 
             MetaType type = meta.metaType();
             if (type == Types1_17.META_TYPES.particleType) {
-                Particle particle = (Particle) meta.getValue();
+                Particle particle = meta.value();
                 if (particle.getId() == 3) { // Block marker
-                    Particle.ParticleData data = particle.getArguments().remove(0);
+                    Particle.ParticleData<?> data = particle.getArguments().remove(0);
                     int blockState = (int) data.getValue();
                     if (blockState == 7786) { // Light block
                         particle.setId(3);
@@ -123,6 +123,6 @@ public final class EntityPackets1_18 extends EntityRewriter<ClientboundPackets1_
 
     @Override
     public EntityType typeFromId(final int typeId) {
-        return Entity1_17Types.getTypeFromId(typeId);
+        return EntityTypes1_17.getTypeFromId(typeId);
     }
 }

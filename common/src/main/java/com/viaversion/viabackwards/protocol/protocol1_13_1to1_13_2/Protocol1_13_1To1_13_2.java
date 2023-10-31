@@ -42,7 +42,7 @@ public class Protocol1_13_1To1_13_2 extends BackwardsProtocol<ClientboundPackets
         registerServerbound(ServerboundPackets1_13.EDIT_BOOK, new PacketHandlers() {
             @Override
             public void register() {
-                map(Type.FLAT_ITEM, Type.FLAT_VAR_INT_ITEM);
+                map(Type.ITEM1_13, Type.ITEM1_13_2);
             }
         });
 
@@ -61,8 +61,8 @@ public class Protocol1_13_1To1_13_2 extends BackwardsProtocol<ClientboundPackets
                 if (wrapper.passthrough(Type.BOOLEAN)) {
                     wrapper.passthrough(Type.COMPONENT); // Title
                     wrapper.passthrough(Type.COMPONENT); // Description
-                    Item icon = wrapper.read(Type.FLAT_VAR_INT_ITEM);
-                    wrapper.write(Type.FLAT_ITEM, icon);
+                    Item icon = wrapper.read(Type.ITEM1_13_2);
+                    wrapper.write(Type.ITEM1_13, icon);
                     wrapper.passthrough(Type.VAR_INT); // Frame type
                     int flags = wrapper.passthrough(Type.INT); // Flags
                     if ((flags & 1) != 0)

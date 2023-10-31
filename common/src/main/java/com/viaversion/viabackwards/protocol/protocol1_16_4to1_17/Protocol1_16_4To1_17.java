@@ -29,7 +29,7 @@ import com.viaversion.viabackwards.protocol.protocol1_16_4to1_17.storage.PlayerL
 import com.viaversion.viaversion.api.connection.UserConnection;
 import com.viaversion.viaversion.api.minecraft.RegistryType;
 import com.viaversion.viaversion.api.minecraft.TagData;
-import com.viaversion.viaversion.api.minecraft.entities.Entity1_17Types;
+import com.viaversion.viaversion.api.minecraft.entities.EntityTypes1_17;
 import com.viaversion.viaversion.api.protocol.packet.PacketWrapper;
 import com.viaversion.viaversion.api.protocol.remapper.PacketHandlers;
 import com.viaversion.viaversion.api.type.Type;
@@ -41,6 +41,7 @@ import com.viaversion.viaversion.protocols.protocol1_16_2to1_16_1.ServerboundPac
 import com.viaversion.viaversion.protocols.protocol1_17to1_16_4.ClientboundPackets1_17;
 import com.viaversion.viaversion.protocols.protocol1_17to1_16_4.Protocol1_17To1_16_4;
 import com.viaversion.viaversion.protocols.protocol1_17to1_16_4.ServerboundPackets1_17;
+import com.viaversion.viaversion.rewriter.ComponentRewriter;
 import com.viaversion.viaversion.rewriter.IdRewriteFunction;
 import com.viaversion.viaversion.rewriter.StatisticsRewriter;
 import com.viaversion.viaversion.rewriter.TagRewriter;
@@ -57,7 +58,7 @@ public final class Protocol1_16_4To1_17 extends BackwardsProtocol<ClientboundPac
     private static final int[] EMPTY_ARRAY = {};
     private final EntityPackets1_17 entityRewriter = new EntityPackets1_17(this);
     private final BlockItemPackets1_17 blockItemPackets = new BlockItemPackets1_17(this);
-    private final TranslatableRewriter<ClientboundPackets1_17> translatableRewriter = new TranslatableRewriter<>(this);
+    private final TranslatableRewriter<ClientboundPackets1_17> translatableRewriter = new TranslatableRewriter<>(this, ComponentRewriter.ReadType.JSON);
 
     public Protocol1_16_4To1_17() {
         super(ClientboundPackets1_17.class, ClientboundPackets1_16_2.class, ServerboundPackets1_17.class, ServerboundPackets1_16_2.class);
@@ -69,7 +70,7 @@ public final class Protocol1_16_4To1_17 extends BackwardsProtocol<ClientboundPac
 
         translatableRewriter.registerComponentPacket(ClientboundPackets1_17.CHAT_MESSAGE);
         translatableRewriter.registerBossBar(ClientboundPackets1_17.BOSSBAR);
-        translatableRewriter.registerDisconnect(ClientboundPackets1_17.DISCONNECT);
+        translatableRewriter.registerComponentPacket(ClientboundPackets1_17.DISCONNECT);
         translatableRewriter.registerTabList(ClientboundPackets1_17.TAB_LIST);
         translatableRewriter.registerOpenWindow(ClientboundPackets1_17.OPEN_WINDOW);
         translatableRewriter.registerPing();
@@ -219,7 +220,7 @@ public final class Protocol1_16_4To1_17 extends BackwardsProtocol<ClientboundPac
 
     @Override
     public void init(UserConnection user) {
-        addEntityTracker(user, new EntityTrackerBase(user, Entity1_17Types.PLAYER));
+        addEntityTracker(user, new EntityTrackerBase(user, EntityTypes1_17.PLAYER));
         user.put(new PingRequests());
         user.put(new PlayerLastCursorItem());
     }
