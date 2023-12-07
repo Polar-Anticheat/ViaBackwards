@@ -21,8 +21,8 @@ import com.google.common.collect.Sets;
 import com.viaversion.viabackwards.api.rewriters.EntityRewriter;
 import com.viaversion.viabackwards.protocol.protocol1_19_4to1_20.Protocol1_19_4To1_20;
 import com.viaversion.viaversion.api.minecraft.Quaternion;
-import com.viaversion.viaversion.api.minecraft.entities.EntityTypes1_19_4;
 import com.viaversion.viaversion.api.minecraft.entities.EntityType;
+import com.viaversion.viaversion.api.minecraft.entities.EntityTypes1_19_4;
 import com.viaversion.viaversion.api.minecraft.metadata.Metadata;
 import com.viaversion.viaversion.api.protocol.remapper.PacketHandlers;
 import com.viaversion.viaversion.api.type.Type;
@@ -44,7 +44,7 @@ public final class EntityPackets1_20 extends EntityRewriter<ClientboundPackets1_
     private static final Quaternion Y_FLIPPED_ROTATION = new Quaternion(0, 1, 0, 0);
 
     public EntityPackets1_20(final Protocol1_19_4To1_20 protocol) {
-        super(protocol);
+        super(protocol, Types1_19_4.META_TYPES.optionalComponentType, Types1_19_4.META_TYPES.booleanType);
     }
 
     @Override
@@ -58,7 +58,7 @@ public final class EntityPackets1_20 extends EntityRewriter<ClientboundPackets1_
             public void register() {
                 map(Type.INT); // Entity id
                 map(Type.BOOLEAN); // Hardcore
-                map(Type.UNSIGNED_BYTE); // Gamemode
+                map(Type.BYTE); // Gamemode
                 map(Type.BYTE); // Previous Gamemode
                 map(Type.STRING_ARRAY); // World List
                 map(Type.NAMED_COMPOUND_TAG); // Dimension registry

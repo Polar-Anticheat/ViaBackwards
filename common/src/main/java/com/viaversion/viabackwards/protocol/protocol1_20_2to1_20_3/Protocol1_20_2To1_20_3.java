@@ -23,8 +23,9 @@ import com.viaversion.viabackwards.api.rewriters.SoundRewriter;
 import com.viaversion.viabackwards.api.rewriters.TranslatableRewriter;
 import com.viaversion.viabackwards.protocol.protocol1_20_2to1_20_3.rewriter.BlockItemPacketRewriter1_20_3;
 import com.viaversion.viabackwards.protocol.protocol1_20_2to1_20_3.rewriter.EntityPacketRewriter1_20_3;
+import com.viaversion.viabackwards.protocol.protocol1_20_2to1_20_3.storage.ResourcepackIDStorage;
 import com.viaversion.viaversion.api.connection.UserConnection;
-import com.viaversion.viaversion.api.minecraft.entities.EntityTypes1_19_4;
+import com.viaversion.viaversion.api.minecraft.entities.EntityTypes1_20_3;
 import com.viaversion.viaversion.api.protocol.packet.ClientboundPacketType;
 import com.viaversion.viaversion.api.protocol.packet.PacketWrapper;
 import com.viaversion.viaversion.api.protocol.packet.ServerboundPacketType;
@@ -34,15 +35,20 @@ import com.viaversion.viaversion.api.protocol.remapper.PacketHandlers;
 import com.viaversion.viaversion.api.type.Type;
 import com.viaversion.viaversion.data.entity.EntityTrackerBase;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.Tag;
+import com.viaversion.viaversion.protocols.protocol1_19_4to1_19_3.rewriter.CommandRewriter1_19_4;
 import com.viaversion.viaversion.protocols.protocol1_20_2to1_20.packet.ClientboundConfigurationPackets1_20_2;
 import com.viaversion.viaversion.protocols.protocol1_20_2to1_20.packet.ClientboundPackets1_20_2;
 import com.viaversion.viaversion.protocols.protocol1_20_2to1_20.packet.ServerboundConfigurationPackets1_20_2;
 import com.viaversion.viaversion.protocols.protocol1_20_2to1_20.packet.ServerboundPackets1_20_2;
 import com.viaversion.viaversion.protocols.protocol1_20_3to1_20_2.Protocol1_20_3To1_20_2;
+import com.viaversion.viaversion.protocols.protocol1_20_3to1_20_2.packet.ClientboundConfigurationPackets1_20_3;
 import com.viaversion.viaversion.protocols.protocol1_20_3to1_20_2.packet.ClientboundPackets1_20_3;
 import com.viaversion.viaversion.protocols.protocol1_20_3to1_20_2.packet.ServerboundPackets1_20_3;
 import com.viaversion.viaversion.rewriter.ComponentRewriter.ReadType;
+import com.viaversion.viaversion.rewriter.StatisticsRewriter;
+import com.viaversion.viaversion.rewriter.TagRewriter;
 import java.util.BitSet;
+import java.util.UUID;
 
 public final class Protocol1_20_2To1_20_3 extends BackwardsProtocol<ClientboundPackets1_20_3, ClientboundPackets1_20_2, ServerboundPackets1_20_3, ServerboundPackets1_20_2> {
 
@@ -59,10 +65,53 @@ public final class Protocol1_20_2To1_20_3 extends BackwardsProtocol<ClientboundP
     protected void registerPackets() {
         super.registerPackets();
 
+        final TagRewriter<ClientboundPackets1_20_3> tagRewriter = new TagRewriter<>(this);
+        tagRewriter.registerGeneric(ClientboundPackets1_20_3.TAGS);
+
         final SoundRewriter<ClientboundPackets1_20_3> soundRewriter = new SoundRewriter<>(this);
         soundRewriter.register1_19_3Sound(ClientboundPackets1_20_3.SOUND);
         soundRewriter.registerEntitySound(ClientboundPackets1_20_3.ENTITY_SOUND);
         soundRewriter.registerStopSound(ClientboundPackets1_20_3.STOP_SOUND);
+
+        new StatisticsRewriter<>(this).register(ClientboundPackets1_20_3.STATISTICS);
+        new CommandRewriter1_19_4<ClientboundPackets1_20_3>(this) {
+            @Override
+            public void handleArgument(final PacketWrapper wrapper, final String argumentType) throws Exception {
+                if (argumentType.equals("minecraft:style")) {
+                    wrapper.write(Type.VAR_INT, 1); // Phrase
+                } else {
+                    super.handleArgument(wrapper, argumentType);
+                }
+            }
+        }.registerDeclareCommands1_19(ClientboundPackets1_20_3.DECLARE_COMMANDS);
+
+        registerClientbound(ClientboundPackets1_20_3.RESET_SCORE, ClientboundPackets1_20_2.UPDATE_SCORE, wrapper -> {
+            wrapper.passthrough(Type.STRING); // Owner
+            wrapper.write(Type.BYTE, (byte) 1); // Reset score
+
+            final String objectiveName = wrapper.read(Type.OPTIONAL_STRING);
+            wrapper.write(Type.STRING, objectiveName != null ? objectiveName : ""); // Objective name
+        });
+        registerClientbound(ClientboundPackets1_20_3.UPDATE_SCORE, wrapper -> {
+            wrapper.passthrough(Type.STRING); // Owner
+            wrapper.write(Type.BYTE, (byte) 0); // Change score
+            wrapper.passthrough(Type.STRING); // Objective name
+            wrapper.passthrough(Type.VAR_INT); // Score
+
+            // Remove display and number format
+            wrapper.clearInputBuffer();
+        });
+        registerClientbound(ClientboundPackets1_20_3.SCOREBOARD_OBJECTIVE, wrapper -> {
+            wrapper.passthrough(Type.STRING); // Objective Name
+            final byte action = wrapper.passthrough(Type.BYTE); // Method
+            if (action == 0 || action == 2) {
+                convertComponent(wrapper); // Display Name
+                wrapper.passthrough(Type.VAR_INT); // Render type
+
+                // Remove number format
+                wrapper.clearInputBuffer();
+            }
+        });
 
         cancelClientbound(ClientboundPackets1_20_3.TICKING_STATE);
         cancelClientbound(ClientboundPackets1_20_3.TICKING_STEP);
@@ -130,7 +179,7 @@ public final class Protocol1_20_2To1_20_3 extends BackwardsProtocol<ClientboundP
             if (wrapper.passthrough(Type.BOOLEAN)) {
                 final int icons = wrapper.passthrough(Type.VAR_INT);
                 for (int i = 0; i < icons; i++) {
-                    wrapper.passthrough(Type.BYTE); // Type
+                    wrapper.passthrough(Type.VAR_INT); // Type
                     wrapper.passthrough(Type.BYTE); // X
                     wrapper.passthrough(Type.BYTE); // Y
                     wrapper.passthrough(Type.BYTE); // Rotation
@@ -173,13 +222,6 @@ public final class Protocol1_20_2To1_20_3 extends BackwardsProtocol<ClientboundP
             convertComponent(wrapper); // Sender
             convertOptionalComponent(wrapper); // Target
         });
-        registerClientbound(ClientboundPackets1_20_3.SCOREBOARD_OBJECTIVE, wrapper -> {
-            wrapper.passthrough(Type.STRING); // Objective Name
-            final byte action = wrapper.passthrough(Type.BYTE); // Mode
-            if (action == 0 || action == 2) {
-                convertComponent(wrapper); // Display Name
-            }
-        });
         registerClientbound(ClientboundPackets1_20_3.TEAMS, wrapper -> {
             wrapper.passthrough(Type.STRING); // Team Name
             final byte action = wrapper.passthrough(Type.BYTE); // Mode
@@ -195,14 +237,18 @@ public final class Protocol1_20_2To1_20_3 extends BackwardsProtocol<ClientboundP
         });
 
         registerClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_2.DISCONNECT.getId(), ClientboundConfigurationPackets1_20_2.DISCONNECT.getId(), this::convertComponent);
-        registerClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_2.RESOURCE_PACK.getId(), ClientboundConfigurationPackets1_20_2.RESOURCE_PACK.getId(), resourcePackHandler());
         registerClientbound(ClientboundPackets1_20_3.DISCONNECT, this::convertComponent);
-        registerClientbound(ClientboundPackets1_20_3.RESOURCE_PACK, resourcePackHandler());
+        registerClientbound(ClientboundPackets1_20_3.RESOURCE_PACK_PUSH, ClientboundPackets1_20_2.RESOURCE_PACK, resourcePackHandler());
         registerClientbound(ClientboundPackets1_20_3.SERVER_DATA, this::convertComponent);
         registerClientbound(ClientboundPackets1_20_3.ACTIONBAR, this::convertComponent);
         registerClientbound(ClientboundPackets1_20_3.TITLE_TEXT, this::convertComponent);
         registerClientbound(ClientboundPackets1_20_3.TITLE_SUBTITLE, this::convertComponent);
-        registerClientbound(ClientboundPackets1_20_3.DISGUISED_CHAT, this::convertComponent);
+        registerClientbound(ClientboundPackets1_20_3.DISGUISED_CHAT, wrapper -> {
+            convertComponent(wrapper);
+            wrapper.passthrough(Type.VAR_INT); // Chat type
+            convertComponent(wrapper); // Name
+            convertOptionalComponent(wrapper); // Target name
+        });
         registerClientbound(ClientboundPackets1_20_3.SYSTEM_CHAT, this::convertComponent);
         registerClientbound(ClientboundPackets1_20_3.OPEN_WINDOW, wrapper -> {
             wrapper.passthrough(Type.VAR_INT); // Container id
@@ -263,10 +309,31 @@ public final class Protocol1_20_2To1_20_3 extends BackwardsProtocol<ClientboundP
                 }
             }
         });
+
+        cancelClientbound(ClientboundPackets1_20_3.RESOURCE_PACK_POP);
+        registerServerbound(ServerboundPackets1_20_2.RESOURCE_PACK_STATUS, resourcePackStatusHandler());
+
+        cancelClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_3.RESOURCE_PACK_POP.getId());
+        registerServerbound(State.CONFIGURATION, ServerboundConfigurationPackets1_20_2.RESOURCE_PACK, resourcePackStatusHandler());
+        registerClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_3.RESOURCE_PACK_PUSH.getId(), ServerboundConfigurationPackets1_20_2.RESOURCE_PACK.getId(), resourcePackHandler());
+        registerClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_3.UPDATE_TAGS.getId(), ClientboundConfigurationPackets1_20_2.UPDATE_TAGS.getId(), tagRewriter.getGenericHandler());
+        // TODO Auto map via packet types provider
+        registerClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_3.UPDATE_ENABLED_FEATURES.getId(), ClientboundConfigurationPackets1_20_2.UPDATE_ENABLED_FEATURES.getId());
     }
+
+    private PacketHandler resourcePackStatusHandler() {
+        return wrapper -> {
+            final ResourcepackIDStorage storage = wrapper.user().get(ResourcepackIDStorage.class);
+            wrapper.write(Type.UUID, storage != null ? storage.uuid() : UUID.randomUUID());
+        };
+    }
+
 
     private PacketHandler resourcePackHandler() {
         return wrapper -> {
+            final UUID uuid = wrapper.read(Type.UUID);
+            wrapper.user().put(new ResourcepackIDStorage(uuid));
+
             wrapper.passthrough(Type.STRING); // Url
             wrapper.passthrough(Type.STRING); // Hash
             wrapper.passthrough(Type.BOOLEAN); // Required
@@ -282,12 +349,13 @@ public final class Protocol1_20_2To1_20_3 extends BackwardsProtocol<ClientboundP
 
     private void convertOptionalComponent(final PacketWrapper wrapper) throws Exception {
         final Tag tag = wrapper.read(Type.OPTIONAL_TAG);
+        translatableRewriter.processTag(tag);
         wrapper.write(Type.OPTIONAL_COMPONENT, Protocol1_20_3To1_20_2.tagComponentToJson(tag));
     }
 
     @Override
     public void init(final UserConnection connection) {
-        addEntityTracker(connection, new EntityTrackerBase(connection, EntityTypes1_19_4.PLAYER));
+        addEntityTracker(connection, new EntityTrackerBase(connection, EntityTypes1_20_3.PLAYER));
     }
 
     @Override
@@ -297,7 +365,7 @@ public final class Protocol1_20_2To1_20_3 extends BackwardsProtocol<ClientboundP
 
     @Override
     protected ClientboundPacketType clientboundFinishConfigurationPacket() {
-        return ClientboundConfigurationPackets1_20_2.FINISH_CONFIGURATION;
+        return ClientboundConfigurationPackets1_20_3.FINISH_CONFIGURATION;
     }
 
     @Override
