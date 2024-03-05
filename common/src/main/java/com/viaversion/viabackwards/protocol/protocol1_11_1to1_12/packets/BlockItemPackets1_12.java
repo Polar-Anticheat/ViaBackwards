@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -80,9 +80,9 @@ public class BlockItemPackets1_12 extends LegacyBlockItemRewriter<ClientboundPac
             }
         });
 
-        registerSetSlot(ClientboundPackets1_12.SET_SLOT, Type.ITEM1_8);
-        registerWindowItems(ClientboundPackets1_12.WINDOW_ITEMS, Type.ITEM1_8_SHORT_ARRAY);
-        registerEntityEquipment(ClientboundPackets1_12.ENTITY_EQUIPMENT, Type.ITEM1_8);
+        registerSetSlot(ClientboundPackets1_12.SET_SLOT);
+        registerWindowItems(ClientboundPackets1_12.WINDOW_ITEMS);
+        registerEntityEquipment(ClientboundPackets1_12.ENTITY_EQUIPMENT);
 
         // Plugin message Packet -> Trading
         protocol.registerClientbound(ClientboundPackets1_12.PLUGIN_MESSAGE, new PacketHandlers() {
@@ -91,7 +91,7 @@ public class BlockItemPackets1_12 extends LegacyBlockItemRewriter<ClientboundPac
                 map(Type.STRING); // 0 - Channel
 
                 handler(wrapper -> {
-                    if (wrapper.get(Type.STRING, 0).equalsIgnoreCase("MC|TrList")) {
+                    if (wrapper.get(Type.STRING, 0).equals("MC|TrList")) {
                         wrapper.passthrough(Type.INT); // Passthrough Window ID
 
                         int size = wrapper.passthrough(Type.UNSIGNED_BYTE);
@@ -148,7 +148,7 @@ public class BlockItemPackets1_12 extends LegacyBlockItemRewriter<ClientboundPac
             }
         });
 
-        registerCreativeInvAction(ServerboundPackets1_9_3.CREATIVE_INVENTORY_ACTION, Type.ITEM1_8);
+        registerCreativeInvAction(ServerboundPackets1_9_3.CREATIVE_INVENTORY_ACTION);
 
         protocol.registerClientbound(ClientboundPackets1_12.CHUNK_DATA, wrapper -> {
             ClientWorld clientWorld = wrapper.user().get(ClientWorld.class);
@@ -276,7 +276,7 @@ public class BlockItemPackets1_12 extends LegacyBlockItemRewriter<ClientboundPac
         // Restore the removed long array tags
         for (Map.Entry<String, Tag> entry : backupTag) {
             if (entry.getValue() instanceof CompoundTag) {
-                CompoundTag nestedTag = compoundTag.get(entry.getKey());
+                CompoundTag nestedTag = compoundTag.getCompoundTag(entry.getKey());
                 handleNbtToServer(nestedTag, (CompoundTag) entry.getValue());
             } else {
                 compoundTag.put(entry.getKey(), fromIntArrayTag((IntArrayTag) entry.getValue()));

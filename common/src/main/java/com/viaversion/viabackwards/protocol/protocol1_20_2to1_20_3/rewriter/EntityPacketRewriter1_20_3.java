@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,19 +19,21 @@ package com.viaversion.viabackwards.protocol.protocol1_20_2to1_20_3.rewriter;
 
 import com.viaversion.viabackwards.api.rewriters.EntityRewriter;
 import com.viaversion.viabackwards.protocol.protocol1_20_2to1_20_3.Protocol1_20_2To1_20_3;
+import com.viaversion.viabackwards.protocol.protocol1_20_2to1_20_3.storage.SpawnPositionStorage;
 import com.viaversion.viaversion.api.data.ParticleMappings;
 import com.viaversion.viaversion.api.minecraft.Particle;
 import com.viaversion.viaversion.api.minecraft.entities.EntityType;
 import com.viaversion.viaversion.api.minecraft.entities.EntityTypes1_20_3;
 import com.viaversion.viaversion.api.minecraft.metadata.MetaType;
 import com.viaversion.viaversion.api.protocol.packet.State;
+import com.viaversion.viaversion.api.protocol.remapper.PacketHandler;
 import com.viaversion.viaversion.api.protocol.remapper.PacketHandlers;
 import com.viaversion.viaversion.api.type.Type;
 import com.viaversion.viaversion.api.type.types.version.Types1_20_2;
 import com.viaversion.viaversion.api.type.types.version.Types1_20_3;
 import com.viaversion.viaversion.protocols.protocol1_20_2to1_20.packet.ClientboundConfigurationPackets1_20_2;
-import com.viaversion.viaversion.protocols.protocol1_20_3to1_20_2.Protocol1_20_3To1_20_2;
 import com.viaversion.viaversion.protocols.protocol1_20_3to1_20_2.packet.ClientboundPackets1_20_3;
+import com.viaversion.viaversion.util.ComponentUtil;
 
 public final class EntityPacketRewriter1_20_3 extends EntityRewriter<ClientboundPackets1_20_3, Protocol1_20_2To1_20_3> {
 
@@ -68,18 +70,28 @@ public final class EntityPacketRewriter1_20_3 extends EntityRewriter<Clientbound
                 map(Type.BOOLEAN); // Limited crafting
                 map(Type.STRING); // Dimension key
                 map(Type.STRING); // World
+
+                handler(spawnPositionHandler());
                 handler(worldDataTrackerHandlerByKey());
             }
         });
-
         protocol.registerClientbound(ClientboundPackets1_20_3.RESPAWN, new PacketHandlers() {
             @Override
             public void register() {
                 map(Type.STRING); // Dimension
                 map(Type.STRING); // World
+
+                handler(spawnPositionHandler());
                 handler(worldDataTrackerHandlerByKey());
             }
         });
+    }
+
+    private PacketHandler spawnPositionHandler() {
+        return wrapper -> {
+            final String world = wrapper.get(Type.STRING, 1);
+            wrapper.user().get(SpawnPositionStorage.class).setDimension(world);
+        };
     }
 
     @Override
@@ -87,10 +99,10 @@ public final class EntityPacketRewriter1_20_3 extends EntityRewriter<Clientbound
         filter().handler((event, meta) -> {
             final MetaType type = meta.metaType();
             if (type == Types1_20_3.META_TYPES.componentType) {
-                meta.setTypeAndValue(Types1_20_2.META_TYPES.componentType, Protocol1_20_3To1_20_2.tagComponentToJson(meta.value()));
+                meta.setTypeAndValue(Types1_20_2.META_TYPES.componentType, ComponentUtil.tagToJson(meta.value()));
                 return;
             } else if (type == Types1_20_3.META_TYPES.optionalComponentType) {
-                meta.setTypeAndValue(Types1_20_2.META_TYPES.optionalComponentType, Protocol1_20_3To1_20_2.tagComponentToJson(meta.value()));
+                meta.setTypeAndValue(Types1_20_2.META_TYPES.optionalComponentType, ComponentUtil.tagToJson(meta.value()));
                 return;
             } else if (type == Types1_20_3.META_TYPES.particleType) {
                 final Particle particle = (Particle) meta.getValue();
@@ -117,15 +129,15 @@ public final class EntityPacketRewriter1_20_3 extends EntityRewriter<Clientbound
         });
 
         registerMetaTypeHandler(
-                Types1_20_2.META_TYPES.itemType,
-                Types1_20_2.META_TYPES.blockStateType,
-                Types1_20_2.META_TYPES.optionalBlockStateType,
-                Types1_20_2.META_TYPES.particleType,
-                Types1_20_2.META_TYPES.componentType,
-                Types1_20_2.META_TYPES.optionalComponentType
+            Types1_20_2.META_TYPES.itemType,
+            Types1_20_2.META_TYPES.blockStateType,
+            Types1_20_2.META_TYPES.optionalBlockStateType,
+            Types1_20_2.META_TYPES.particleType,
+            Types1_20_2.META_TYPES.componentType,
+            Types1_20_2.META_TYPES.optionalComponentType
         );
 
-        filter().filterFamily(EntityTypes1_20_3.MINECART_ABSTRACT).index(11).handler((event, meta) -> {
+        filter().type(EntityTypes1_20_3.MINECART_ABSTRACT).index(11).handler((event, meta) -> {
             final int blockState = meta.value();
             meta.setValue(protocol.getMappingData().getNewBlockStateId(blockState));
         });

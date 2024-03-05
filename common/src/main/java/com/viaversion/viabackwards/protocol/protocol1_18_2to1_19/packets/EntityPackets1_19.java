@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,7 +33,11 @@ import com.viaversion.viaversion.api.protocol.remapper.PacketHandlers;
 import com.viaversion.viaversion.api.type.Type;
 import com.viaversion.viaversion.api.type.types.version.Types1_18;
 import com.viaversion.viaversion.api.type.types.version.Types1_19;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.*;
+import com.viaversion.viaversion.libs.opennbt.tag.builtin.CompoundTag;
+import com.viaversion.viaversion.libs.opennbt.tag.builtin.ListTag;
+import com.viaversion.viaversion.libs.opennbt.tag.builtin.NumberTag;
+import com.viaversion.viaversion.libs.opennbt.tag.builtin.StringTag;
+import com.viaversion.viaversion.libs.opennbt.tag.builtin.Tag;
 import com.viaversion.viaversion.protocols.protocol1_18to1_17_1.ClientboundPackets1_18;
 import com.viaversion.viaversion.protocols.protocol1_19to1_18_2.ClientboundPackets1_19;
 
@@ -133,7 +137,7 @@ public final class EntityPackets1_19 extends EntityRewriter<ClientboundPackets1_
                         final CompoundTag dimensionCompound = (CompoundTag) dimension;
                         final StringTag nameTag = dimensionCompound.get("name");
                         final CompoundTag dimensionData = dimensionCompound.get("element");
-                        dimensionRegistryStorage.addDimension(nameTag.getValue(), dimensionData.clone());
+                        dimensionRegistryStorage.addDimension(nameTag.getValue(), dimensionData.copy());
 
                         if (!found && nameTag.getValue().equals(dimensionKey)) {
                             wrapper.write(Type.NAMED_COMPOUND_TAG, dimensionData);
@@ -149,7 +153,7 @@ public final class EntityPackets1_19 extends EntityRewriter<ClientboundPackets1_
                     final ListTag biomes = biomeRegistry.get("value");
                     for (final Tag biome : biomes.getValue()) {
                         final CompoundTag biomeCompound = ((CompoundTag) biome).get("element");
-                        biomeCompound.put("category", new StringTag("none"));
+                        biomeCompound.putString("category", "none");
                     }
                     tracker(wrapper.user()).setBiomesSent(biomes.size());
 
@@ -266,9 +270,9 @@ public final class EntityPackets1_19 extends EntityRewriter<ClientboundPackets1_
         });
 
         registerMetaTypeHandler(Types1_18.META_TYPES.itemType, Types1_18.META_TYPES.blockStateType, null, null,
-                Types1_18.META_TYPES.componentType, Types1_18.META_TYPES.optionalComponentType);
+            Types1_18.META_TYPES.componentType, Types1_18.META_TYPES.optionalComponentType);
 
-        filter().filterFamily(EntityTypes1_19.MINECART_ABSTRACT).index(11).handler((event, meta) -> {
+        filter().type(EntityTypes1_19.MINECART_ABSTRACT).index(11).handler((event, meta) -> {
             final int data = (int) meta.getValue();
             meta.setValue(protocol.getMappingData().getNewBlockStateId(data));
         });

@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
  */
 package com.viaversion.viabackwards.protocol.protocol1_19to1_19_1;
 
-import com.google.common.base.Preconditions;
 import com.viaversion.viabackwards.ViaBackwards;
 import com.viaversion.viabackwards.api.BackwardsProtocol;
 import com.viaversion.viabackwards.api.rewriters.TranslatableRewriter;
@@ -41,28 +40,25 @@ import com.viaversion.viaversion.api.protocol.remapper.PacketHandlers;
 import com.viaversion.viaversion.api.type.Type;
 import com.viaversion.viaversion.data.entity.EntityTrackerBase;
 import com.viaversion.viaversion.libs.gson.JsonElement;
-import com.viaversion.viaversion.libs.kyori.adventure.text.Component;
-import com.viaversion.viaversion.libs.kyori.adventure.text.TranslatableComponent;
-import com.viaversion.viaversion.libs.kyori.adventure.text.format.NamedTextColor;
-import com.viaversion.viaversion.libs.kyori.adventure.text.format.Style;
-import com.viaversion.viaversion.libs.kyori.adventure.text.format.TextDecoration;
-import com.viaversion.viaversion.libs.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.*;
+import com.viaversion.viaversion.libs.opennbt.tag.builtin.CompoundTag;
+import com.viaversion.viaversion.libs.opennbt.tag.builtin.ListTag;
+import com.viaversion.viaversion.libs.opennbt.tag.builtin.NumberTag;
+import com.viaversion.viaversion.libs.opennbt.tag.builtin.Tag;
 import com.viaversion.viaversion.protocols.base.ClientboundLoginPackets;
 import com.viaversion.viaversion.protocols.base.ServerboundLoginPackets;
 import com.viaversion.viaversion.protocols.protocol1_19_1to1_19.ClientboundPackets1_19_1;
+import com.viaversion.viaversion.protocols.protocol1_19_1to1_19.Protocol1_19_1To1_19;
 import com.viaversion.viaversion.protocols.protocol1_19_1to1_19.ServerboundPackets1_19_1;
 import com.viaversion.viaversion.protocols.protocol1_19to1_18_2.ClientboundPackets1_19;
 import com.viaversion.viaversion.protocols.protocol1_19to1_18_2.ServerboundPackets1_19;
 import com.viaversion.viaversion.protocols.protocol1_19to1_18_2.packets.EntityPackets;
 import com.viaversion.viaversion.rewriter.ComponentRewriter;
 import com.viaversion.viaversion.util.CipherUtil;
+import com.viaversion.viaversion.util.ComponentUtil;
 import com.viaversion.viaversion.util.Pair;
-import org.checkerframework.checker.nullness.qual.Nullable;
-
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 public final class Protocol1_19To1_19_1 extends BackwardsProtocol<ClientboundPackets1_19_1, ClientboundPackets1_19, ServerboundPackets1_19_1, ServerboundPackets1_19> {
 
@@ -107,7 +103,7 @@ public final class Protocol1_19To1_19_1 extends BackwardsProtocol<ClientboundPac
                     chatTypeStorage.clear();
 
                     final CompoundTag registry = wrapper.get(Type.NAMED_COMPOUND_TAG, 0);
-                    final ListTag chatTypes = ((CompoundTag) registry.get("minecraft:chat_type")).get("value");
+                    final ListTag chatTypes = registry.getCompoundTag("minecraft:chat_type").get("value");
                     for (final Tag chatType : chatTypes) {
                         final CompoundTag chatTypeCompound = (CompoundTag) chatType;
                         final NumberTag idTag = chatTypeCompound.get("id");
@@ -116,7 +112,7 @@ public final class Protocol1_19To1_19_1 extends BackwardsProtocol<ClientboundPac
 
                     // Replace with 1.19 chat types
                     // Ensures that the client has a chat type for system message, with and without overlay
-                    registry.put("minecraft:chat_type", EntityPackets.CHAT_REGISTRY.clone());
+                    registry.put("minecraft:chat_type", EntityPackets.CHAT_REGISTRY.copy());
                 });
                 handler(entityRewriter.worldTrackerHandlerByKey());
             }
@@ -160,7 +156,7 @@ public final class Protocol1_19To1_19_1 extends BackwardsProtocol<ClientboundPac
             }
             if (message == null) {
                 // If no decorated or unsigned message is given, use the plain one
-                message = GsonComponentSerializer.gson().serializeToTree(Component.text(plainMessage));
+                message = ComponentUtil.plainToJson(plainMessage);
             }
 
             final int filterMaskType = wrapper.read(Type.VAR_INT);
@@ -403,61 +399,11 @@ public final class Protocol1_19To1_19_1 extends BackwardsProtocol<ClientboundPac
             return null;
         }
 
-        chatType = chatType.<CompoundTag>get("element").get("chat");
+        chatType = chatType.getCompoundTag("element").getCompoundTag("chat");
         if (chatType == null) {
             return null;
         }
 
-        final String translationKey = (String) chatType.get("translation_key").getValue();
-        final TranslatableComponent.Builder componentBuilder = Component.translatable().key(translationKey);
-
-        // Add the style
-        final CompoundTag style = chatType.get("style");
-        if (style != null) {
-            final Style.Builder styleBuilder = Style.style();
-            final StringTag color = style.get("color");
-            if (color != null) {
-                final NamedTextColor textColor = NamedTextColor.NAMES.value(color.getValue());
-                if (textColor != null) {
-                    styleBuilder.color(NamedTextColor.NAMES.value(color.getValue()));
-                }
-            }
-
-            for (final String key : TextDecoration.NAMES.keys()) {
-                if (style.contains(key)) {
-                    styleBuilder.decoration(TextDecoration.NAMES.value(key), style.<ByteTag>get(key).asByte() == 1);
-                }
-            }
-            componentBuilder.style(styleBuilder.build());
-        }
-
-        // Add the replacements
-        final ListTag parameters = chatType.get("parameters");
-        if (parameters != null) {
-            final List<Component> arguments = new ArrayList<>();
-            for (final Tag element : parameters) {
-                JsonElement argument = null;
-                switch ((String) element.getValue()) {
-                    case "sender":
-                        argument = senderName;
-                        break;
-                    case "content":
-                        argument = message;
-                        break;
-                    case "target":
-                        Preconditions.checkNotNull(targetName, "Target name is null");
-                        argument = targetName;
-                        break;
-                    default:
-                        ViaBackwards.getPlatform().getLogger().warning("Unknown parameter for chat decoration: " + element.getValue());
-                }
-                if (argument != null) {
-                    arguments.add(GsonComponentSerializer.gson().deserializeFromTree(argument));
-                }
-            }
-            componentBuilder.args(arguments);
-        }
-
-        return GsonComponentSerializer.gson().serializeToTree(componentBuilder.build());
+        return Protocol1_19_1To1_19.translatabaleComponentFromTag(chatType, senderName, targetName, message);
     }
 }

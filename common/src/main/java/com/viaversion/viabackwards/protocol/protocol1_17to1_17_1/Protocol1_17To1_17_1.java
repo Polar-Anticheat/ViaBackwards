@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -105,8 +105,8 @@ public final class Protocol1_17To1_17_1 extends BackwardsProtocol<ClientboundPac
             ListTag pagesTag;
             StringTag titleTag = null;
             // Sanity checks
-            if (tag == null || (pagesTag = tag.get("pages")) == null
-                    || (signing && (titleTag = tag.get("title")) == null)) {
+            if (tag == null || (pagesTag = tag.getListTag("pages")) == null
+                || (signing && (titleTag = tag.getStringTag("title")) == null)) {
                 wrapper.write(Type.VAR_INT, 0); // Pages length
                 wrapper.write(Type.BOOLEAN, false); // Optional title
                 return;
@@ -131,10 +131,6 @@ public final class Protocol1_17To1_17_1 extends BackwardsProtocol<ClientboundPac
             // Write optional title
             wrapper.write(Type.BOOLEAN, signing);
             if (signing) {
-                if (titleTag == null) {
-                    titleTag = tag.get("title");
-                }
-
                 // Limit title length
                 String title = titleTag.getValue();
                 if (title.length() > MAX_TITLE_LENGTH) {

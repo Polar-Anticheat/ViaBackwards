@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,10 +39,9 @@ import com.viaversion.viaversion.libs.opennbt.tag.builtin.Tag;
 import com.viaversion.viaversion.protocols.protocol1_19_1to1_19.ClientboundPackets1_19_1;
 import com.viaversion.viaversion.protocols.protocol1_19_3to1_19_1.ClientboundPackets1_19_3;
 import com.viaversion.viaversion.protocols.protocol1_19_3to1_19_1.ServerboundPackets1_19_3;
-import org.checkerframework.checker.nullness.qual.Nullable;
-
 import java.util.BitSet;
 import java.util.UUID;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 public final class EntityPackets1_19_3 extends EntityRewriter<ClientboundPackets1_19_3, Protocol1_19_1To1_19_3> {
 
@@ -83,7 +82,7 @@ public final class EntityPackets1_19_3 extends EntityRewriter<ClientboundPackets
                     final ChatTypeStorage1_19_3 chatTypeStorage = wrapper.user().get(ChatTypeStorage1_19_3.class);
                     chatTypeStorage.clear();
                     final CompoundTag registry = wrapper.get(Type.NAMED_COMPOUND_TAG, 0);
-                    final ListTag chatTypes = ((CompoundTag) registry.get("minecraft:chat_type")).get("value");
+                    final ListTag chatTypes = registry.getCompoundTag("minecraft:chat_type").get("value");
                     for (final Tag chatType : chatTypes) {
                         final CompoundTag chatTypeCompound = (CompoundTag) chatType;
                         final NumberTag idTag = chatTypeCompound.get("id");
@@ -244,7 +243,7 @@ public final class EntityPackets1_19_3 extends EntityRewriter<ClientboundPackets
             }
         });
         registerMetaTypeHandler(Types1_19.META_TYPES.itemType, Types1_19.META_TYPES.blockStateType, null, Types1_19.META_TYPES.particleType,
-                Types1_19.META_TYPES.componentType, Types1_19.META_TYPES.optionalComponentType);
+            Types1_19.META_TYPES.componentType, Types1_19.META_TYPES.optionalComponentType);
 
         filter().index(6).handler((event, meta) -> {
             // Sitting pose added
@@ -255,7 +254,7 @@ public final class EntityPackets1_19_3 extends EntityRewriter<ClientboundPackets
                 meta.setValue(pose - 1);
             }
         });
-        filter().filterFamily(EntityTypes1_19_3.MINECART_ABSTRACT).index(11).handler((event, meta) -> {
+        filter().type(EntityTypes1_19_3.MINECART_ABSTRACT).index(11).handler((event, meta) -> {
             final int data = (int) meta.getValue();
             meta.setValue(protocol.getMappingData().getNewBlockStateId(data));
         });

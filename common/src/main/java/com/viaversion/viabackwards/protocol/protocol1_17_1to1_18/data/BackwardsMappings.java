@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,6 +33,8 @@ public final class BackwardsMappings extends com.viaversion.viabackwards.api.dat
 
     @Override
     protected void loadExtras(final CompoundTag data) {
+        super.loadExtras(data);
+
         for (final Object2IntMap.Entry<String> entry : Protocol1_18To1_17_1.MAPPINGS.blockEntityIds().object2IntEntrySet()) {
             blockEntities.put(entry.getIntValue(), entry.getKey());
         }

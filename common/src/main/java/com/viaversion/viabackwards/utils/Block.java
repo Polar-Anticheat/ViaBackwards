@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,11 +25,6 @@ public class Block {
     public Block(int id, int data) {
         this.id = id;
         this.data = (short) data;
-    }
-
-    public Block(int id) {
-        this.id = id;
-        this.data = 0;
     }
 
     public int getId() {

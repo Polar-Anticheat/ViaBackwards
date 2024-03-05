@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,7 +28,10 @@ import com.viaversion.viaversion.api.type.Type;
 import com.viaversion.viaversion.api.type.types.version.Types1_19_3;
 import com.viaversion.viaversion.api.type.types.version.Types1_19_4;
 import com.viaversion.viaversion.libs.gson.JsonElement;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.*;
+import com.viaversion.viaversion.libs.opennbt.tag.builtin.CompoundTag;
+import com.viaversion.viaversion.libs.opennbt.tag.builtin.ListTag;
+import com.viaversion.viaversion.libs.opennbt.tag.builtin.NumberTag;
+import com.viaversion.viaversion.libs.opennbt.tag.builtin.Tag;
 import com.viaversion.viaversion.protocols.protocol1_19_3to1_19_1.ClientboundPackets1_19_3;
 import com.viaversion.viaversion.protocols.protocol1_19_4to1_19_3.ClientboundPackets1_19_4;
 
@@ -69,7 +72,7 @@ public final class EntityPackets1_19_4 extends EntityRewriter<ClientboundPackets
                     for (final Tag biomeTag : biomes) {
                         final CompoundTag biomeData = ((CompoundTag) biomeTag).get("element");
                         final NumberTag hasPrecipitation = biomeData.get("has_precipitation");
-                        biomeData.put("precipitation", new StringTag(hasPrecipitation.asByte() == 1 ? "rain" : "none"));
+                        biomeData.putString("precipitation", hasPrecipitation.asByte() == 1 ? "rain" : "none");
                     }
                 });
             }
@@ -140,14 +143,14 @@ public final class EntityPackets1_19_4 extends EntityRewriter<ClientboundPackets
             meta.setMetaType(Types1_19_3.META_TYPES.byId(id));
         });
         registerMetaTypeHandler(Types1_19_3.META_TYPES.itemType, Types1_19_3.META_TYPES.blockStateType, null, Types1_19_3.META_TYPES.particleType,
-                Types1_19_3.META_TYPES.componentType, Types1_19_3.META_TYPES.optionalComponentType);
+            Types1_19_3.META_TYPES.componentType, Types1_19_3.META_TYPES.optionalComponentType);
 
-        filter().filterFamily(EntityTypes1_19_4.MINECART_ABSTRACT).index(11).handler((event, meta) -> {
+        filter().type(EntityTypes1_19_4.MINECART_ABSTRACT).index(11).handler((event, meta) -> {
             final int blockState = meta.value();
             meta.setValue(protocol.getMappingData().getNewBlockStateId(blockState));
         });
 
-        filter().filterFamily(EntityTypes1_19_4.BOAT).index(11).handler((event, meta) -> {
+        filter().type(EntityTypes1_19_4.BOAT).index(11).handler((event, meta) -> {
             final int boatType = meta.value();
             if (boatType > 4) { // Cherry
                 meta.setValue(boatType - 1);
@@ -163,7 +166,7 @@ public final class EntityPackets1_19_4 extends EntityRewriter<ClientboundPackets
             final JsonElement element = meta.value();
             protocol.getTranslatableRewriter().processText(element);
         }));
-        filter().filterFamily(EntityTypes1_19_4.DISPLAY).handler((event, meta) -> {
+        filter().type(EntityTypes1_19_4.DISPLAY).handler((event, meta) -> {
             // TODO Maybe spawn an extra entity to ride the armor stand for blocks and items
             // Remove a large heap of display metadata
             if (event.index() > 7) {
@@ -178,7 +181,7 @@ public final class EntityPackets1_19_4 extends EntityRewriter<ClientboundPackets
         filter().type(EntityTypes1_19_4.SNIFFER).removeIndex(17); // State
         filter().type(EntityTypes1_19_4.SNIFFER).removeIndex(18); // Drop seed at tick
 
-        filter().filterFamily(EntityTypes1_19_4.ABSTRACT_HORSE).addIndex(18); // Owner UUID
+        filter().type(EntityTypes1_19_4.ABSTRACT_HORSE).addIndex(18); // Owner UUID
     }
 
     @Override

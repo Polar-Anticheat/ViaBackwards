@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,12 @@ import com.viaversion.viabackwards.protocol.protocol1_13_2to1_14.storage.ChunkLi
 import com.viaversion.viaversion.api.Via;
 import com.viaversion.viaversion.api.minecraft.ClientWorld;
 import com.viaversion.viaversion.api.minecraft.Environment;
-import com.viaversion.viaversion.api.minecraft.chunks.*;
+import com.viaversion.viaversion.api.minecraft.chunks.Chunk;
+import com.viaversion.viaversion.api.minecraft.chunks.ChunkSection;
+import com.viaversion.viaversion.api.minecraft.chunks.ChunkSectionLight;
+import com.viaversion.viaversion.api.minecraft.chunks.ChunkSectionLightImpl;
+import com.viaversion.viaversion.api.minecraft.chunks.DataPalette;
+import com.viaversion.viaversion.api.minecraft.chunks.PaletteType;
 import com.viaversion.viaversion.api.minecraft.entities.EntityType;
 import com.viaversion.viaversion.api.minecraft.entities.EntityTypes1_14;
 import com.viaversion.viaversion.api.minecraft.item.Item;
@@ -42,15 +47,14 @@ import com.viaversion.viaversion.libs.opennbt.tag.builtin.CompoundTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.ListTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.StringTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.Tag;
-import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.ChatRewriter;
 import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.ClientboundPackets1_13;
 import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.ServerboundPackets1_13;
 import com.viaversion.viaversion.protocols.protocol1_14to1_13_2.ClientboundPackets1_14;
 import com.viaversion.viaversion.protocols.protocol1_14to1_13_2.Protocol1_14To1_13_2;
 import com.viaversion.viaversion.rewriter.BlockRewriter;
 import com.viaversion.viaversion.rewriter.RecipeRewriter;
+import com.viaversion.viaversion.util.ComponentUtil;
 import com.viaversion.viaversion.util.Key;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -60,7 +64,7 @@ public class BlockItemPackets1_14 extends com.viaversion.viabackwards.api.rewrit
     private EnchantmentRewriter enchantmentRewriter;
 
     public BlockItemPackets1_14(Protocol1_13_2To1_14 protocol) {
-        super(protocol);
+        super(protocol, Type.ITEM1_13_2, Type.ITEM1_13_2_SHORT_ARRAY);
     }
 
     @Override
@@ -143,7 +147,7 @@ public class BlockItemPackets1_14 extends com.viaversion.viabackwards.api.rewrit
                 if (title.isJsonObject() && (object = title.getAsJsonObject()).has("translate")) {
                     // Don't rewrite other 9x3 translatable containers
                     if (type != 2 || object.getAsJsonPrimitive("translate").getAsString().equals("container.barrel")) {
-                        title = ChatRewriter.legacyTextToJson(containerTitle);
+                        title = ComponentUtil.legacyToJson(containerTitle);
                     }
                 }
             }
@@ -166,9 +170,9 @@ public class BlockItemPackets1_14 extends com.viaversion.viabackwards.api.rewrit
         BlockRewriter<ClientboundPackets1_14> blockRewriter = BlockRewriter.legacy(protocol);
 
         registerSetCooldown(ClientboundPackets1_14.COOLDOWN);
-        registerWindowItems(ClientboundPackets1_14.WINDOW_ITEMS, Type.ITEM1_13_2_SHORT_ARRAY);
-        registerSetSlot(ClientboundPackets1_14.SET_SLOT, Type.ITEM1_13_2);
-        registerAdvancements(ClientboundPackets1_14.ADVANCEMENTS, Type.ITEM1_13_2);
+        registerWindowItems(ClientboundPackets1_14.WINDOW_ITEMS);
+        registerSetSlot(ClientboundPackets1_14.SET_SLOT);
+        registerAdvancements(ClientboundPackets1_14.ADVANCEMENTS);
 
         // Trade List -> Plugin Message
         protocol.registerClientbound(ClientboundPackets1_14.TRADE_LIST, ClientboundPackets1_13.PLUGIN_MESSAGE, wrapper -> {
@@ -289,8 +293,8 @@ public class BlockItemPackets1_14 extends com.viaversion.viabackwards.api.rewrit
         });
 
 
-        registerClickWindow(ServerboundPackets1_13.CLICK_WINDOW, Type.ITEM1_13_2);
-        registerCreativeInvAction(ServerboundPackets1_13.CREATIVE_INVENTORY_ACTION, Type.ITEM1_13_2);
+        registerClickWindow(ServerboundPackets1_13.CLICK_WINDOW);
+        registerCreativeInvAction(ServerboundPackets1_13.CREATIVE_INVENTORY_ACTION);
 
         protocol.registerClientbound(ClientboundPackets1_14.BLOCK_BREAK_ANIMATION, new PacketHandlers() {
             @Override
@@ -432,7 +436,7 @@ public class BlockItemPackets1_14 extends com.viaversion.viabackwards.api.rewrit
             }
         });
 
-        registerSpawnParticle(ClientboundPackets1_14.SPAWN_PARTICLE, Type.ITEM1_13_2, Type.FLOAT);
+        registerSpawnParticle(ClientboundPackets1_14.SPAWN_PARTICLE, Type.FLOAT);
 
         protocol.registerClientbound(ClientboundPackets1_14.MAP_DATA, new PacketHandlers() {
             @Override
@@ -468,8 +472,8 @@ public class BlockItemPackets1_14 extends com.viaversion.viabackwards.api.rewrit
         // Lore now uses JSON
         CompoundTag tag = item.tag();
         CompoundTag display;
-        if (tag != null && (display = tag.get("display")) != null) {
-            ListTag lore = display.get("Lore");
+        if (tag != null && (display = tag.getCompoundTag("display")) != null) {
+            ListTag lore = display.getListTag("Lore");
             if (lore != null) {
                 saveListTag(display, lore, "Lore");
 
@@ -479,7 +483,7 @@ public class BlockItemPackets1_14 extends com.viaversion.viabackwards.api.rewrit
                     StringTag loreEntryTag = (StringTag) loreEntry;
                     String value = loreEntryTag.getValue();
                     if (value != null && !value.isEmpty()) {
-                        loreEntryTag.setValue(ChatRewriter.jsonToLegacyText(value));
+                        loreEntryTag.setValue(ComponentUtil.jsonToLegacy(value));
                     }
                 }
             }
@@ -496,14 +500,14 @@ public class BlockItemPackets1_14 extends com.viaversion.viabackwards.api.rewrit
         // Lore now uses JSON
         CompoundTag tag = item.tag();
         CompoundTag display;
-        if (tag != null && (display = tag.get("display")) != null) {
+        if (tag != null && (display = tag.getCompoundTag("display")) != null) {
             // Transform to json if no backup tag is found (else process that in the super method)
-            ListTag lore = display.get("Lore");
+            ListTag lore = display.getListTag("Lore");
             if (lore != null && !hasBackupTag(display, "Lore")) {
                 for (Tag loreEntry : lore) {
                     if (loreEntry instanceof StringTag) {
                         StringTag loreEntryTag = (StringTag) loreEntry;
-                        loreEntryTag.setValue(ChatRewriter.legacyTextToJsonString(loreEntryTag.getValue()));
+                        loreEntryTag.setValue(ComponentUtil.legacyToJsonString(loreEntryTag.getValue()));
                     }
                 }
             }

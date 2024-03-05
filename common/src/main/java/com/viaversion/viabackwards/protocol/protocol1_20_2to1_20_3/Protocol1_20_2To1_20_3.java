@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,7 +24,9 @@ import com.viaversion.viabackwards.api.rewriters.TranslatableRewriter;
 import com.viaversion.viabackwards.protocol.protocol1_20_2to1_20_3.rewriter.BlockItemPacketRewriter1_20_3;
 import com.viaversion.viabackwards.protocol.protocol1_20_2to1_20_3.rewriter.EntityPacketRewriter1_20_3;
 import com.viaversion.viabackwards.protocol.protocol1_20_2to1_20_3.storage.ResourcepackIDStorage;
+import com.viaversion.viabackwards.protocol.protocol1_20_2to1_20_3.storage.SpawnPositionStorage;
 import com.viaversion.viaversion.api.connection.UserConnection;
+import com.viaversion.viaversion.api.minecraft.Position;
 import com.viaversion.viaversion.api.minecraft.entities.EntityTypes1_20_3;
 import com.viaversion.viaversion.api.protocol.packet.ClientboundPacketType;
 import com.viaversion.viaversion.api.protocol.packet.PacketWrapper;
@@ -34,6 +36,7 @@ import com.viaversion.viaversion.api.protocol.remapper.PacketHandler;
 import com.viaversion.viaversion.api.protocol.remapper.PacketHandlers;
 import com.viaversion.viaversion.api.type.Type;
 import com.viaversion.viaversion.data.entity.EntityTrackerBase;
+import com.viaversion.viaversion.libs.fastutil.Pair;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.Tag;
 import com.viaversion.viaversion.protocols.protocol1_19_4to1_19_3.rewriter.CommandRewriter1_19_4;
 import com.viaversion.viaversion.protocols.protocol1_20_2to1_20.packet.ClientboundConfigurationPackets1_20_2;
@@ -47,6 +50,7 @@ import com.viaversion.viaversion.protocols.protocol1_20_3to1_20_2.packet.Serverb
 import com.viaversion.viaversion.rewriter.ComponentRewriter.ReadType;
 import com.viaversion.viaversion.rewriter.StatisticsRewriter;
 import com.viaversion.viaversion.rewriter.TagRewriter;
+import com.viaversion.viaversion.util.ComponentUtil;
 import java.util.BitSet;
 import java.util.UUID;
 
@@ -87,14 +91,14 @@ public final class Protocol1_20_2To1_20_3 extends BackwardsProtocol<ClientboundP
 
         registerClientbound(ClientboundPackets1_20_3.RESET_SCORE, ClientboundPackets1_20_2.UPDATE_SCORE, wrapper -> {
             wrapper.passthrough(Type.STRING); // Owner
-            wrapper.write(Type.BYTE, (byte) 1); // Reset score
+            wrapper.write(Type.VAR_INT, 1); // Reset score
 
             final String objectiveName = wrapper.read(Type.OPTIONAL_STRING);
             wrapper.write(Type.STRING, objectiveName != null ? objectiveName : ""); // Objective name
         });
         registerClientbound(ClientboundPackets1_20_3.UPDATE_SCORE, wrapper -> {
             wrapper.passthrough(Type.STRING); // Owner
-            wrapper.write(Type.BYTE, (byte) 0); // Change score
+            wrapper.write(Type.VAR_INT, 0); // Change score
             wrapper.passthrough(Type.STRING); // Objective name
             wrapper.passthrough(Type.VAR_INT); // Score
 
@@ -309,13 +313,34 @@ public final class Protocol1_20_2To1_20_3 extends BackwardsProtocol<ClientboundP
                 }
             }
         });
+        registerClientbound(ClientboundPackets1_20_3.SPAWN_POSITION, wrapper -> {
+            final Position position = wrapper.passthrough(Type.POSITION1_14);
+            final float angle = wrapper.passthrough(Type.FLOAT);
+
+            wrapper.user().get(SpawnPositionStorage.class).setSpawnPosition(Pair.of(position, angle));
+        });
+        registerClientbound(ClientboundPackets1_20_3.GAME_EVENT, wrapper -> {
+            final short reason = wrapper.passthrough(Type.UNSIGNED_BYTE);
+
+            if (reason == 13) { // Level chunks load start
+                wrapper.cancel();
+                final Pair<Position, Float> spawnPositionAndAngle = wrapper.user().get(SpawnPositionStorage.class).getSpawnPosition();
+
+                // To emulate the old behavior, we send a fake spawn pos packet containing the actual spawn pos which forces
+                // the 1.20.2 client to close the downloading terrain screen like the new game state does
+                final PacketWrapper spawnPosition = wrapper.create(ClientboundPackets1_20_2.SPAWN_POSITION);
+                spawnPosition.write(Type.POSITION1_14, spawnPositionAndAngle.first()); // position
+                spawnPosition.write(Type.FLOAT, spawnPositionAndAngle.second()); // angle
+                spawnPosition.send(Protocol1_20_2To1_20_3.class, true);
+            }
+        });
 
         cancelClientbound(ClientboundPackets1_20_3.RESOURCE_PACK_POP);
         registerServerbound(ServerboundPackets1_20_2.RESOURCE_PACK_STATUS, resourcePackStatusHandler());
 
         cancelClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_3.RESOURCE_PACK_POP.getId());
         registerServerbound(State.CONFIGURATION, ServerboundConfigurationPackets1_20_2.RESOURCE_PACK, resourcePackStatusHandler());
-        registerClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_3.RESOURCE_PACK_PUSH.getId(), ServerboundConfigurationPackets1_20_2.RESOURCE_PACK.getId(), resourcePackHandler());
+        registerClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_3.RESOURCE_PACK_PUSH.getId(), ClientboundConfigurationPackets1_20_2.RESOURCE_PACK.getId(), resourcePackHandler());
         registerClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_3.UPDATE_TAGS.getId(), ClientboundConfigurationPackets1_20_2.UPDATE_TAGS.getId(), tagRewriter.getGenericHandler());
         // TODO Auto map via packet types provider
         registerClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_3.UPDATE_ENABLED_FEATURES.getId(), ClientboundConfigurationPackets1_20_2.UPDATE_ENABLED_FEATURES.getId());
@@ -327,7 +352,6 @@ public final class Protocol1_20_2To1_20_3 extends BackwardsProtocol<ClientboundP
             wrapper.write(Type.UUID, storage != null ? storage.uuid() : UUID.randomUUID());
         };
     }
-
 
     private PacketHandler resourcePackHandler() {
         return wrapper -> {
@@ -344,17 +368,18 @@ public final class Protocol1_20_2To1_20_3 extends BackwardsProtocol<ClientboundP
     private void convertComponent(final PacketWrapper wrapper) throws Exception {
         final Tag tag = wrapper.read(Type.TAG);
         translatableRewriter.processTag(tag);
-        wrapper.write(Type.COMPONENT, Protocol1_20_3To1_20_2.tagComponentToJson(tag));
+        wrapper.write(Type.COMPONENT, ComponentUtil.tagToJson(tag));
     }
 
     private void convertOptionalComponent(final PacketWrapper wrapper) throws Exception {
         final Tag tag = wrapper.read(Type.OPTIONAL_TAG);
         translatableRewriter.processTag(tag);
-        wrapper.write(Type.OPTIONAL_COMPONENT, Protocol1_20_3To1_20_2.tagComponentToJson(tag));
+        wrapper.write(Type.OPTIONAL_COMPONENT, ComponentUtil.tagToJson(tag));
     }
 
     @Override
     public void init(final UserConnection connection) {
+        connection.put(new SpawnPositionStorage());
         addEntityTracker(connection, new EntityTrackerBase(connection, EntityTypes1_20_3.PLAYER));
     }
 

@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,7 +32,6 @@ import com.viaversion.viaversion.api.protocol.packet.PacketWrapper;
 import com.viaversion.viaversion.api.protocol.remapper.PacketHandlers;
 import com.viaversion.viaversion.api.protocol.version.ProtocolVersion;
 import com.viaversion.viaversion.api.type.Type;
-import com.viaversion.viaversion.api.type.types.UUIDIntArrayType;
 import com.viaversion.viaversion.api.type.types.chunk.ChunkType1_15;
 import com.viaversion.viaversion.api.type.types.chunk.ChunkType1_16;
 import com.viaversion.viaversion.libs.gson.JsonElement;
@@ -50,6 +49,7 @@ import com.viaversion.viaversion.rewriter.BlockRewriter;
 import com.viaversion.viaversion.rewriter.RecipeRewriter;
 import com.viaversion.viaversion.util.CompactArrayUtil;
 import com.viaversion.viaversion.util.Key;
+import com.viaversion.viaversion.util.UUIDUtil;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -60,7 +60,7 @@ public class BlockItemPackets1_16 extends com.viaversion.viabackwards.api.rewrit
     private EnchantmentRewriter enchantmentRewriter;
 
     public BlockItemPackets1_16(Protocol1_15_2To1_16 protocol) {
-        super(protocol);
+        super(protocol, Type.ITEM1_13_2, Type.ITEM1_13_2_SHORT_ARRAY);
     }
 
     @Override
@@ -94,10 +94,10 @@ public class BlockItemPackets1_16 extends com.viaversion.viabackwards.api.rewrit
         });
 
         registerSetCooldown(ClientboundPackets1_16.COOLDOWN);
-        registerWindowItems(ClientboundPackets1_16.WINDOW_ITEMS, Type.ITEM1_13_2_SHORT_ARRAY);
-        registerSetSlot(ClientboundPackets1_16.SET_SLOT, Type.ITEM1_13_2);
+        registerWindowItems(ClientboundPackets1_16.WINDOW_ITEMS);
+        registerSetSlot(ClientboundPackets1_16.SET_SLOT);
         registerTradeList(ClientboundPackets1_16.TRADE_LIST);
-        registerAdvancements(ClientboundPackets1_16.ADVANCEMENTS, Type.ITEM1_13_2);
+        registerAdvancements(ClientboundPackets1_16.ADVANCEMENTS);
 
         blockRewriter.registerAcknowledgePlayerDigging(ClientboundPackets1_16.ACKNOWLEDGE_PLAYER_DIGGING);
         blockRewriter.registerBlockAction(ClientboundPackets1_16.BLOCK_ACTION);
@@ -160,6 +160,10 @@ public class BlockItemPackets1_16 extends com.viaversion.viabackwards.api.rewrit
 
             CompoundTag heightMaps = chunk.getHeightMap();
             for (Tag heightMapTag : heightMaps.values()) {
+                if (!(heightMapTag instanceof LongArrayTag)) {
+                    continue;
+                }
+
                 LongArrayTag heightMap = (LongArrayTag) heightMapTag;
                 int[] heightMapData = new int[256];
                 CompactArrayUtil.iterateCompactArrayWithPadding(9, heightMapData.length, heightMap.getValue(), (i, v) -> heightMapData[i] = v);
@@ -201,7 +205,7 @@ public class BlockItemPackets1_16 extends com.viaversion.viabackwards.api.rewrit
 
         blockRewriter.registerEffect(ClientboundPackets1_16.EFFECT, 1010, 2001);
 
-        registerSpawnParticle(ClientboundPackets1_16.SPAWN_PARTICLE, Type.ITEM1_13_2, Type.DOUBLE);
+        registerSpawnParticle(ClientboundPackets1_16.SPAWN_PARTICLE, Type.DOUBLE);
 
         protocol.registerClientbound(ClientboundPackets1_16.WINDOW_PROPERTY, new PacketHandlers() {
             @Override
@@ -241,14 +245,14 @@ public class BlockItemPackets1_16 extends com.viaversion.viabackwards.api.rewrit
             handleBlockEntity(tag);
         });
 
-        registerClickWindow(ServerboundPackets1_14.CLICK_WINDOW, Type.ITEM1_13_2);
-        registerCreativeInvAction(ServerboundPackets1_14.CREATIVE_INVENTORY_ACTION, Type.ITEM1_13_2);
+        registerClickWindow(ServerboundPackets1_14.CLICK_WINDOW);
+        registerCreativeInvAction(ServerboundPackets1_14.CREATIVE_INVENTORY_ACTION);
 
         protocol.registerServerbound(ServerboundPackets1_14.EDIT_BOOK, wrapper -> handleItemToServer(wrapper.passthrough(Type.ITEM1_13_2)));
     }
 
     private void handleBlockEntity(CompoundTag tag) {
-        StringTag idTag = tag.get("id");
+        StringTag idTag = tag.getStringTag("id");
         if (idTag == null) return;
 
         String id = idTag.getValue();
@@ -257,8 +261,8 @@ public class BlockItemPackets1_16 extends com.viaversion.viabackwards.api.rewrit
             if (!(targetUuidTag instanceof IntArrayTag)) return;
 
             // Target -> target_uuid
-            UUID targetUuid = UUIDIntArrayType.uuidFromIntArray((int[]) targetUuidTag.getValue());
-            tag.put("target_uuid", new StringTag(targetUuid.toString()));
+            UUID targetUuid = UUIDUtil.fromIntArray((int[]) targetUuidTag.getValue());
+            tag.putString("target_uuid", targetUuid.toString());
         } else if (id.equals("minecraft:skull")) {
             Tag skullOwnerTag = tag.remove("SkullOwner");
             if (!(skullOwnerTag instanceof CompoundTag)) return;
@@ -266,8 +270,8 @@ public class BlockItemPackets1_16 extends com.viaversion.viabackwards.api.rewrit
             CompoundTag skullOwnerCompoundTag = (CompoundTag) skullOwnerTag;
             Tag ownerUuidTag = skullOwnerCompoundTag.remove("Id");
             if (ownerUuidTag instanceof IntArrayTag) {
-                UUID ownerUuid = UUIDIntArrayType.uuidFromIntArray((int[]) ownerUuidTag.getValue());
-                skullOwnerCompoundTag.put("Id", new StringTag(ownerUuid.toString()));
+                UUID ownerUuid = UUIDUtil.fromIntArray((int[]) ownerUuidTag.getValue());
+                skullOwnerCompoundTag.putString("Id", ownerUuid.toString());
             }
 
             // SkullOwner -> Owner
@@ -293,22 +297,21 @@ public class BlockItemPackets1_16 extends com.viaversion.viabackwards.api.rewrit
 
         CompoundTag tag = item.tag();
         if (item.identifier() == 771 && tag != null) {
-            Tag ownerTag = tag.get("SkullOwner");
-            if (ownerTag instanceof CompoundTag) {
-                CompoundTag ownerCompundTag = (CompoundTag) ownerTag;
-                Tag idTag = ownerCompundTag.get("Id");
-                if (idTag instanceof IntArrayTag) {
-                    UUID ownerUuid = UUIDIntArrayType.uuidFromIntArray((int[]) idTag.getValue());
-                    ownerCompundTag.put("Id", new StringTag(ownerUuid.toString()));
+            CompoundTag ownerTag = tag.getCompoundTag("SkullOwner");
+            if (ownerTag != null) {
+                IntArrayTag idTag = ownerTag.getIntArrayTag("Id");
+                if (idTag != null) {
+                    UUID ownerUuid = UUIDUtil.fromIntArray(idTag.getValue());
+                    ownerTag.putString("Id", ownerUuid.toString());
                 }
             }
         }
 
-        // Handle hover event changes in book pages
-        if ((item.identifier() == 758 || item.identifier() == 759) && tag != null) {
-            Tag pagesTag = tag.get("pages");
-            if (pagesTag instanceof ListTag) {
-                for (Tag page : ((ListTag) pagesTag)) {
+        // Handle hover event changes in written book pages
+        if (item.identifier() == 759 && tag != null) {
+            ListTag pagesTag = tag.getListTag("pages");
+            if (pagesTag != null) {
+                for (Tag page : pagesTag) {
                     if (!(page instanceof StringTag)) {
                         continue;
                     }
@@ -334,13 +337,12 @@ public class BlockItemPackets1_16 extends com.viaversion.viabackwards.api.rewrit
 
         CompoundTag tag = item.tag();
         if (identifier == 771 && tag != null) {
-            Tag ownerTag = tag.get("SkullOwner");
-            if (ownerTag instanceof CompoundTag) {
-                CompoundTag ownerCompundTag = (CompoundTag) ownerTag;
-                Tag idTag = ownerCompundTag.get("Id");
-                if (idTag instanceof StringTag) {
-                    UUID ownerUuid = UUID.fromString((String) idTag.getValue());
-                    ownerCompundTag.put("Id", new IntArrayTag(UUIDIntArrayType.uuidToIntArray(ownerUuid)));
+            CompoundTag ownerTag = tag.getCompoundTag("SkullOwner");
+            if (ownerTag != null) {
+                StringTag idTag = ownerTag.getStringTag("Id");
+                if (idTag != null) {
+                    UUID ownerUuid = UUID.fromString(idTag.getValue());
+                    ownerTag.put("Id", new IntArrayTag(UUIDUtil.toIntArray(ownerUuid)));
                 }
             }
         }

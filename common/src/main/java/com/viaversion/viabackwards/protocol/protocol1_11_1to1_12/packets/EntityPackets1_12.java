@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,11 +24,10 @@ import com.viaversion.viabackwards.protocol.protocol1_11_1to1_12.data.ParrotStor
 import com.viaversion.viabackwards.protocol.protocol1_11_1to1_12.data.ShoulderTracker;
 import com.viaversion.viabackwards.utils.Block;
 import com.viaversion.viaversion.api.data.entity.StoredEntityData;
-import com.viaversion.viaversion.api.minecraft.entities.EntityTypes1_12;
 import com.viaversion.viaversion.api.minecraft.entities.EntityType;
+import com.viaversion.viaversion.api.minecraft.entities.EntityTypes1_12;
 import com.viaversion.viaversion.api.minecraft.metadata.Metadata;
 import com.viaversion.viaversion.api.minecraft.metadata.types.MetaType1_12;
-import com.viaversion.viaversion.api.minecraft.metadata.types.MetaType1_9;
 import com.viaversion.viaversion.api.protocol.packet.PacketWrapper;
 import com.viaversion.viaversion.api.protocol.remapper.PacketHandlers;
 import com.viaversion.viaversion.api.type.Type;
@@ -214,8 +213,8 @@ public class EntityPackets1_12 extends LegacyEntityRewriter<ClientboundPackets1_
         });
 
         // Handle Illager
-        filter().filterFamily(EntityTypes1_12.EntityType.EVOCATION_ILLAGER).cancel(12);
-        filter().filterFamily(EntityTypes1_12.EntityType.EVOCATION_ILLAGER).index(13).toIndex(12);
+        filter().type(EntityTypes1_12.EntityType.EVOCATION_ILLAGER).cancel(12);
+        filter().type(EntityTypes1_12.EntityType.EVOCATION_ILLAGER).index(13).toIndex(12);
 
         filter().type(EntityTypes1_12.EntityType.ILLUSION_ILLAGER).index(0).handler((event, meta) -> {
             byte mask = (byte) meta.getValue();
@@ -228,7 +227,7 @@ public class EntityPackets1_12 extends LegacyEntityRewriter<ClientboundPackets1_
         });
 
         // Create Parrot storage
-        filter().filterFamily(EntityTypes1_12.EntityType.PARROT).handler((event, meta) -> {
+        filter().type(EntityTypes1_12.EntityType.PARROT).handler((event, meta) -> {
             StoredEntityData data = storedEntityData(event);
             if (!data.has(ParrotStorage.class)) {
                 data.put(new ParrotStorage());
@@ -271,8 +270,8 @@ public class EntityPackets1_12 extends LegacyEntityRewriter<ClientboundPackets1_
             if (tag.isEmpty() && tracker.getLeftShoulder() != null) {
                 tracker.setLeftShoulder(null);
                 tracker.update();
-            } else if (tag.contains("id") && event.entityId() == tracker.getEntityId()) {
-                String id = (String) tag.get("id").getValue();
+            } else if (tag.getStringTag("id") != null && event.entityId() == tracker.getEntityId()) {
+                String id = tag.getStringTag("id").getValue();
                 if (tracker.getLeftShoulder() == null || !tracker.getLeftShoulder().equals(id)) {
                     tracker.setLeftShoulder(id);
                     tracker.update();
@@ -290,8 +289,8 @@ public class EntityPackets1_12 extends LegacyEntityRewriter<ClientboundPackets1_
             if (tag.isEmpty() && tracker.getRightShoulder() != null) {
                 tracker.setRightShoulder(null);
                 tracker.update();
-            } else if (tag.contains("id") && event.entityId() == tracker.getEntityId()) {
-                String id = (String) tag.get("id").getValue();
+            } else if (tag.getStringTag("id") != null && event.entityId() == tracker.getEntityId()) {
+                String id = tag.getStringTag("id").getValue();
                 if (tracker.getRightShoulder() == null || !tracker.getRightShoulder().equals(id)) {
                     tracker.setRightShoulder(id);
                     tracker.update();

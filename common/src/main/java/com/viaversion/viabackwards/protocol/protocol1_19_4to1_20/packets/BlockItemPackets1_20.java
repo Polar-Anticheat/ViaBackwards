@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@ public final class BlockItemPackets1_20 extends ItemRewriter<ClientboundPackets1
     private static final Set<String> NEW_TRIM_PATTERNS = new HashSet<>(Arrays.asList("host", "raiser", "shaper", "silence", "wayfinder"));
 
     public BlockItemPackets1_20(final Protocol1_19_4To1_20 protocol) {
-        super(protocol);
+        super(protocol, Type.ITEM1_13_2, Type.ITEM1_13_2_ARRAY);
     }
 
     @Override
@@ -91,7 +91,7 @@ public final class BlockItemPackets1_20 extends ItemRewriter<ClientboundPackets1
         registerEntityEquipmentArray(ClientboundPackets1_19_4.ENTITY_EQUIPMENT);
         registerClickWindow1_17_1(ServerboundPackets1_19_4.CLICK_WINDOW);
         registerTradeList1_19(ClientboundPackets1_19_4.TRADE_LIST);
-        registerCreativeInvAction(ServerboundPackets1_19_4.CREATIVE_INVENTORY_ACTION, Type.ITEM1_13_2);
+        registerCreativeInvAction(ServerboundPackets1_19_4.CREATIVE_INVENTORY_ACTION);
         registerWindowPropertyEnchantmentHandler(ClientboundPackets1_19_4.WINDOW_PROPERTY);
         registerSpawnParticle1_19(ClientboundPackets1_19_4.SPAWN_PARTICLE);
 
@@ -158,15 +158,15 @@ public final class BlockItemPackets1_20 extends ItemRewriter<ClientboundPackets1
         super.handleItemToClient(item);
 
         // Remove new trim tags
-        final Tag trimTag;
-        if (item.tag() != null && (trimTag = item.tag().get("Trim")) instanceof CompoundTag) {
-            final Tag patternTag = ((CompoundTag) trimTag).get("pattern");
-            if (patternTag instanceof StringTag) {
-                final StringTag patternStringTag = (StringTag) patternTag;
-                final String pattern = Key.stripMinecraftNamespace(patternStringTag.getValue());
+        final CompoundTag trimTag;
+        final CompoundTag tag = item.tag();
+        if (tag != null && (trimTag = tag.getCompoundTag("Trim")) != null) {
+            final StringTag patternTag = trimTag.getStringTag("pattern");
+            if (patternTag != null) {
+                final String pattern = Key.stripMinecraftNamespace(patternTag.getValue());
                 if (NEW_TRIM_PATTERNS.contains(pattern)) {
-                    item.tag().remove("Trim");
-                    item.tag().put(nbtTagName + "|Trim", trimTag);
+                    tag.remove("Trim");
+                    tag.put(nbtTagName + "|Trim", trimTag);
                 }
             }
         }
@@ -183,8 +183,9 @@ public final class BlockItemPackets1_20 extends ItemRewriter<ClientboundPackets1
 
         // Add back original trim tag
         final Tag trimTag;
-        if (item.tag() != null && (trimTag = item.tag().remove(nbtTagName + "|Trim")) != null) {
-            item.tag().put("Trim", trimTag);
+        final CompoundTag tag = item.tag();
+        if (tag != null && (trimTag = tag.remove(nbtTagName + "|Trim")) != null) {
+            tag.put("Trim", trimTag);
         }
         return item;
     }
@@ -196,19 +197,20 @@ public final class BlockItemPackets1_20 extends ItemRewriter<ClientboundPackets1
         }
 
         final CompoundTag tag = blockEntity.tag();
-        final CompoundTag frontText = tag.remove("front_text");
+        final Tag frontText = tag.remove("front_text");
         tag.remove("back_text");
 
-        if (frontText != null) {
-            writeMessages(frontText, tag, false);
-            writeMessages(frontText, tag, true);
+        if (frontText instanceof CompoundTag) {
+            final CompoundTag frontTextTag = (CompoundTag) frontText;
+            writeMessages(frontTextTag, tag, false);
+            writeMessages(frontTextTag, tag, true);
 
-            final Tag color = frontText.remove("color");
+            final Tag color = frontTextTag.remove("color");
             if (color != null) {
                 tag.put("Color", color);
             }
 
-            final Tag glowing = frontText.remove("has_glowing_text");
+            final Tag glowing = frontTextTag.remove("has_glowing_text");
             if (glowing != null) {
                 tag.put("GlowingText", glowing);
             }
@@ -216,7 +218,7 @@ public final class BlockItemPackets1_20 extends ItemRewriter<ClientboundPackets1
     }
 
     private void writeMessages(final CompoundTag frontText, final CompoundTag tag, final boolean filtered) {
-        final ListTag messages = frontText.get(filtered ? "filtered_messages" : "messages");
+        final ListTag messages = frontText.getListTag(filtered ? "filtered_messages" : "messages");
         if (messages == null) {
             return;
         }

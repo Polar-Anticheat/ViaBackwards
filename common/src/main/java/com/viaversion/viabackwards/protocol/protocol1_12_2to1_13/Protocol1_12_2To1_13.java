@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@ import com.viaversion.viabackwards.protocol.protocol1_12_2to1_13.packets.PlayerP
 import com.viaversion.viabackwards.protocol.protocol1_12_2to1_13.packets.SoundPackets1_13;
 import com.viaversion.viabackwards.protocol.protocol1_12_2to1_13.providers.BackwardsBlockEntityProvider;
 import com.viaversion.viabackwards.protocol.protocol1_12_2to1_13.storage.BackwardsBlockStorage;
+import com.viaversion.viabackwards.protocol.protocol1_12_2to1_13.storage.NoteBlockStorage;
 import com.viaversion.viabackwards.protocol.protocol1_12_2to1_13.storage.PlayerPositionStorage1_13;
 import com.viaversion.viabackwards.protocol.protocol1_12_2to1_13.storage.TabCompleteStorage;
 import com.viaversion.viaversion.api.Via;
@@ -39,15 +40,13 @@ import com.viaversion.viaversion.data.entity.EntityTrackerBase;
 import com.viaversion.viaversion.libs.gson.JsonElement;
 import com.viaversion.viaversion.libs.gson.JsonObject;
 import com.viaversion.viaversion.libs.gson.JsonParser;
-import com.viaversion.viaversion.libs.kyori.adventure.text.Component;
-import com.viaversion.viaversion.libs.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import com.viaversion.viaversion.protocols.protocol1_12_1to1_12.ClientboundPackets1_12_1;
 import com.viaversion.viaversion.protocols.protocol1_12_1to1_12.ServerboundPackets1_12_1;
-import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.ChatRewriter;
 import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.ClientboundPackets1_13;
 import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.Protocol1_13To1_12_2;
 import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.ServerboundPackets1_13;
 import com.viaversion.viaversion.rewriter.ComponentRewriter;
+import com.viaversion.viaversion.util.ComponentUtil;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 public class Protocol1_12_2To1_13 extends BackwardsProtocol<ClientboundPackets1_13, ClientboundPackets1_12_1, ServerboundPackets1_13, ServerboundPackets1_12_1> {
@@ -126,6 +125,8 @@ public class Protocol1_12_2To1_13 extends BackwardsProtocol<ClientboundPackets1_
         if (ViaBackwards.getConfig().isFix1_13FacePlayer() && !user.has(PlayerPositionStorage1_13.class)) {
             user.put(new PlayerPositionStorage1_13());
         }
+
+        user.put(new NoteBlockStorage());
     }
 
     @Override
@@ -167,14 +168,6 @@ public class Protocol1_12_2To1_13 extends BackwardsProtocol<ClientboundPackets1_
         }
 
         translatableToLegacyRewriter.processText(value);
-
-        try {
-            Component component = ChatRewriter.HOVER_GSON_SERIALIZER.deserializeFromTree(value);
-            return LegacyComponentSerializer.legacySection().serialize(component);
-        } catch (Exception e) {
-            ViaBackwards.getPlatform().getLogger().warning("Error converting json text to legacy: " + value);
-            e.printStackTrace();
-        }
-        return "";
+        return ComponentUtil.jsonToLegacy(value);
     }
 }

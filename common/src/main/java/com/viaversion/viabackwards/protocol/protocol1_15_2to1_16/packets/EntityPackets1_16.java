@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -118,9 +118,9 @@ public class EntityPackets1_16 extends EntityRewriter<ClientboundPackets1_16, Pr
 
                     // Send a dummy respawn with a different dimension if the world name was different and the same dimension was used
                     if (clientWorld.getEnvironment() != null && dimension == clientWorld.getEnvironment().id()
-                            && (wrapper.user().isClientSide() || Via.getPlatform().isProxy()
-                            || wrapper.user().getProtocolInfo().getProtocolVersion() <= ProtocolVersion.v1_12_2.getVersion() // Hotfix for https://github.com/ViaVersion/ViaBackwards/issues/381
-                            || !nextWorldName.equals(worldNameTracker.getWorldName()))) {
+                        && (wrapper.user().isClientSide() || Via.getPlatform().isProxy()
+                        || wrapper.user().getProtocolInfo().getProtocolVersion() <= ProtocolVersion.v1_12_2.getVersion() // Hotfix for https://github.com/ViaVersion/ViaBackwards/issues/381
+                        || !nextWorldName.equals(worldNameTracker.getWorldName()))) {
                         PacketWrapper packet = wrapper.create(ClientboundPackets1_15.RESPAWN);
                         packet.write(Type.INT, dimension == 0 ? -1 : 0);
                         packet.write(Type.LONG, 0L);
@@ -282,8 +282,8 @@ public class EntityPackets1_16 extends EntityRewriter<ClientboundPackets1_16, Pr
 
         filter().type(EntityTypes1_16.FISHING_BOBBER).cancel(8);
 
-        filter().filterFamily(EntityTypes1_16.ABSTRACT_ARROW).cancel(8);
-        filter().filterFamily(EntityTypes1_16.ABSTRACT_ARROW).handler((event, meta) -> {
+        filter().type(EntityTypes1_16.ABSTRACT_ARROW).cancel(8);
+        filter().type(EntityTypes1_16.ABSTRACT_ARROW).handler((event, meta) -> {
             if (event.index() >= 8) {
                 event.setIndex(event.index() + 1);
             }

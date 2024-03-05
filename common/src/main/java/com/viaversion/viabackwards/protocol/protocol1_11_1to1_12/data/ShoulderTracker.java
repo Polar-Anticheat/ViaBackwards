@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -82,8 +82,8 @@ public class ShoulderTracker extends StoredObject {
 
         for (String s : array) {
             builder.append(s.substring(0, 1).toUpperCase())
-                    .append(s.substring(1))
-                    .append(" ");
+                .append(s.substring(1))
+                .append(" ");
         }
 
         return builder.toString();

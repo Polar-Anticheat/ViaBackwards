@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -38,11 +38,10 @@ public class BlockItemPackets1_10 extends LegacyBlockItemRewriter<ClientboundPac
 
     @Override
     protected void registerPackets() {
-        registerSetSlot(ClientboundPackets1_9_3.SET_SLOT, Type.ITEM1_8);
-        registerWindowItems(ClientboundPackets1_9_3.WINDOW_ITEMS, Type.ITEM1_8_SHORT_ARRAY);
+        registerSetSlot(ClientboundPackets1_9_3.SET_SLOT);
+        registerWindowItems(ClientboundPackets1_9_3.WINDOW_ITEMS);
 
-        // Entity Equipment Packet
-        registerEntityEquipment(ClientboundPackets1_9_3.ENTITY_EQUIPMENT, Type.ITEM1_8);
+        registerEntityEquipment(ClientboundPackets1_9_3.ENTITY_EQUIPMENT);
 
         protocol.registerClientbound(ClientboundPackets1_9_3.PLUGIN_MESSAGE, new PacketHandlers() {
             @Override
@@ -50,7 +49,7 @@ public class BlockItemPackets1_10 extends LegacyBlockItemRewriter<ClientboundPac
                 map(Type.STRING); // 0 - Channel
 
                 handler(wrapper -> {
-                    if (wrapper.get(Type.STRING, 0).equalsIgnoreCase("MC|TrList")) {
+                    if (wrapper.get(Type.STRING, 0).equals("MC|TrList")) {
                         wrapper.passthrough(Type.INT); // Passthrough Window ID
 
                         int size = wrapper.passthrough(Type.UNSIGNED_BYTE);
@@ -72,8 +71,8 @@ public class BlockItemPackets1_10 extends LegacyBlockItemRewriter<ClientboundPac
             }
         });
 
-        registerClickWindow(ServerboundPackets1_9_3.CLICK_WINDOW, Type.ITEM1_8);
-        registerCreativeInvAction(ServerboundPackets1_9_3.CREATIVE_INVENTORY_ACTION, Type.ITEM1_8);
+        registerClickWindow(ServerboundPackets1_9_3.CLICK_WINDOW);
+        registerCreativeInvAction(ServerboundPackets1_9_3.CREATIVE_INVENTORY_ACTION);
 
         protocol.registerClientbound(ClientboundPackets1_9_3.CHUNK_DATA, wrapper -> {
             ClientWorld clientWorld = wrapper.user().get(ClientWorld.class);

@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -38,12 +38,12 @@ import com.viaversion.viaversion.data.entity.EntityTrackerBase;
 import com.viaversion.viaversion.libs.gson.JsonElement;
 import com.viaversion.viaversion.libs.gson.JsonObject;
 import com.viaversion.viaversion.protocols.protocol1_13_1to1_13.Protocol1_13_1To1_13;
-import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.ChatRewriter;
 import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.ClientboundPackets1_13;
 import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.ServerboundPackets1_13;
 import com.viaversion.viaversion.rewriter.ComponentRewriter;
 import com.viaversion.viaversion.rewriter.StatisticsRewriter;
 import com.viaversion.viaversion.rewriter.TagRewriter;
+import com.viaversion.viaversion.util.ComponentUtil;
 
 public class Protocol1_13To1_13_1 extends BackwardsProtocol<ClientboundPackets1_13, ClientboundPackets1_13, ServerboundPackets1_13, ServerboundPackets1_13> {
 
@@ -108,14 +108,14 @@ public class Protocol1_13To1_13_1 extends BackwardsProtocol<ClientboundPackets1_
 
                     if (ViaBackwards.getConfig().fix1_13FormattedInventoryTitle()) {
                         if (title.isJsonObject() && title.getAsJsonObject().size() == 1
-                                && title.getAsJsonObject().has("translate")) {
+                            && title.getAsJsonObject().has("translate")) {
                             // Hotfix simple translatable components from being converted to legacy text
                             return;
                         }
 
                         // https://bugs.mojang.com/browse/MC-124543
                         JsonObject legacyComponent = new JsonObject();
-                        legacyComponent.addProperty("text", ChatRewriter.jsonToLegacyText(title.toString()));
+                        legacyComponent.addProperty("text", ComponentUtil.jsonToLegacy(title));
                         wrapper.set(Type.COMPONENT, 0, legacyComponent);
                     }
                 });
@@ -136,10 +136,7 @@ public class Protocol1_13To1_13_1 extends BackwardsProtocol<ClientboundPackets1_
                     int count = wrapper.get(Type.VAR_INT, 3);
                     for (int i = 0; i < count; i++) {
                         wrapper.passthrough(Type.STRING);
-                        boolean hasTooltip = wrapper.passthrough(Type.BOOLEAN);
-                        if (hasTooltip) {
-                            wrapper.passthrough(Type.STRING); // JSON Tooltip
-                        }
+                        wrapper.passthrough(Type.OPTIONAL_COMPONENT); // Tooltip
                     }
                 });
             }

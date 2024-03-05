@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,13 +34,12 @@ import com.viaversion.viaversion.libs.opennbt.tag.builtin.StringTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.Tag;
 import com.viaversion.viaversion.protocols.protocol1_19_4to1_19_3.ClientboundPackets1_19_4;
 import com.viaversion.viaversion.util.Key;
-
 import java.util.Set;
 
 public final class EntityPackets1_20 extends EntityRewriter<ClientboundPackets1_19_4, Protocol1_19_4To1_20> {
 
     private final Set<String> newTrimPatterns = Sets.newHashSet("host_armor_trim_smithing_template", "raiser_armor_trim_smithing_template",
-            "silence_armor_trim_smithing_template", "shaper_armor_trim_smithing_template", "wayfinder_armor_trim_smithing_template");
+        "silence_armor_trim_smithing_template", "shaper_armor_trim_smithing_template", "wayfinder_armor_trim_smithing_template");
     private static final Quaternion Y_FLIPPED_ROTATION = new Quaternion(0, 1, 0, 0);
 
     public EntityPackets1_20(final Protocol1_19_4To1_20 protocol) {
@@ -81,16 +80,18 @@ public final class EntityPackets1_20 extends EntityRewriter<ClientboundPackets1_
                 handler(wrapper -> {
                     final CompoundTag registry = wrapper.get(Type.NAMED_COMPOUND_TAG, 0);
 
-                    ListTag values;
+                    final ListTag values;
                     // A 1.20 server can't send this element, and the 1.20 client still works, if the element is missing
                     // on a 1.19.4 client there is an exception, so in case the 1.20 server doesn't send the element we put in an original 1.20 element
-                    if (registry.contains("minecraft:trim_pattern")) {
-                        values = ((CompoundTag) registry.get("minecraft:trim_pattern")).get("value");
+                    final CompoundTag trimPatternTag = registry.getCompoundTag("minecraft:trim_pattern");
+                    if (trimPatternTag != null) {
+                        values = trimPatternTag.getListTag("value");
                     } else {
-                        final CompoundTag trimPatternRegistry = Protocol1_19_4To1_20.MAPPINGS.getTrimPatternRegistry().clone();
+                        final CompoundTag trimPatternRegistry = Protocol1_19_4To1_20.MAPPINGS.getTrimPatternRegistry().copy();
                         registry.put("minecraft:trim_pattern", trimPatternRegistry);
                         values = trimPatternRegistry.get("value");
                     }
+
                     for (final Tag entry : values) {
                         final CompoundTag element = ((CompoundTag) entry).get("element");
                         final StringTag templateItem = element.get("template_item");
@@ -124,15 +125,15 @@ public final class EntityPackets1_20 extends EntityRewriter<ClientboundPackets1_
     protected void registerRewrites() {
         filter().handler((event, meta) -> meta.setMetaType(Types1_19_4.META_TYPES.byId(meta.metaType().typeId())));
         registerMetaTypeHandler(Types1_19_4.META_TYPES.itemType, Types1_19_4.META_TYPES.blockStateType, Types1_19_4.META_TYPES.optionalBlockStateType,
-                Types1_19_4.META_TYPES.particleType, Types1_19_4.META_TYPES.componentType, Types1_19_4.META_TYPES.optionalComponentType);
+            Types1_19_4.META_TYPES.particleType, Types1_19_4.META_TYPES.componentType, Types1_19_4.META_TYPES.optionalComponentType);
 
-        filter().filterFamily(EntityTypes1_19_4.MINECART_ABSTRACT).index(11).handler((event, meta) -> {
+        filter().type(EntityTypes1_19_4.MINECART_ABSTRACT).index(11).handler((event, meta) -> {
             final int blockState = meta.value();
             meta.setValue(protocol.getMappingData().getNewBlockStateId(blockState));
         });
 
         // Rotate item display by 180 degrees around the Y axis
-        filter().filterFamily(EntityTypes1_19_4.ITEM_DISPLAY).handler((event, meta) -> {
+        filter().type(EntityTypes1_19_4.ITEM_DISPLAY).handler((event, meta) -> {
             if (event.trackedEntity().hasSentMetadata() || event.hasExtraMeta()) {
                 return;
             }
@@ -141,7 +142,7 @@ public final class EntityPackets1_20 extends EntityRewriter<ClientboundPackets1_
                 event.createExtraMeta(new Metadata(12, Types1_19_4.META_TYPES.quaternionType, Y_FLIPPED_ROTATION));
             }
         });
-        filter().filterFamily(EntityTypes1_19_4.ITEM_DISPLAY).index(12).handler((event, meta) -> {
+        filter().type(EntityTypes1_19_4.ITEM_DISPLAY).index(12).handler((event, meta) -> {
             final Quaternion quaternion = meta.value();
             meta.setValue(rotateY180(quaternion));
         });

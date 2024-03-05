@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +20,4 @@ package com.viaversion.viabackwards.protocol.protocol1_12_2to1_13.storage;
 import com.viaversion.viabackwards.api.entities.storage.PlayerPositionStorage;
 
 public class PlayerPositionStorage1_13 extends PlayerPositionStorage {
-
-    public PlayerPositionStorage1_13() {
-    }
 }

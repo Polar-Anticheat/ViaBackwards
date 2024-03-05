@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@ import com.viaversion.viabackwards.protocol.protocol1_12_2to1_13.data.EntityType
 import com.viaversion.viabackwards.protocol.protocol1_12_2to1_13.data.PaintingMapping;
 import com.viaversion.viabackwards.protocol.protocol1_12_2to1_13.data.ParticleMapping;
 import com.viaversion.viabackwards.protocol.protocol1_12_2to1_13.storage.BackwardsBlockStorage;
+import com.viaversion.viabackwards.protocol.protocol1_12_2to1_13.storage.NoteBlockStorage;
 import com.viaversion.viabackwards.protocol.protocol1_12_2to1_13.storage.PlayerPositionStorage1_13;
 import com.viaversion.viaversion.api.minecraft.Particle;
 import com.viaversion.viaversion.api.minecraft.entities.EntityType;
@@ -197,7 +198,10 @@ public class EntityPackets1_13 extends LegacyEntityRewriter<ClientboundPackets1_
                 map(Type.INT); // 0 - Dimension ID
 
                 handler(getDimensionHandler(0));
-                handler(wrapper -> wrapper.user().get(BackwardsBlockStorage.class).clear());
+                handler(wrapper -> {
+                    wrapper.user().get(BackwardsBlockStorage.class).clear();
+                    wrapper.user().get(NoteBlockStorage.class).clear();
+                });
             }
         });
 
@@ -227,8 +231,8 @@ public class EntityPackets1_13 extends LegacyEntityRewriter<ClientboundPackets1_
 
             //TODO properly cache and calculate head position?
             EntityPositionHandler.writeFacingDegrees(positionAndLook, positionStorage.getX(),
-                    anchor == 1 ? positionStorage.getY() + 1.62 : positionStorage.getY(),
-                    positionStorage.getZ(), x, y, z);
+                anchor == 1 ? positionStorage.getY() + 1.62 : positionStorage.getY(),
+                positionStorage.getZ(), x, y, z);
 
             positionAndLook.write(Type.BYTE, (byte) 7); // bitfield, 0=absolute, 1=relative - x,y,z relative, yaw,pitch absolute
             positionAndLook.write(Type.VAR_INT, -1);
@@ -297,7 +301,7 @@ public class EntityPackets1_13 extends LegacyEntityRewriter<ClientboundPackets1_
         });
 
         // Handle zombie metadata
-        filter().filterFamily(EntityTypes1_13.EntityType.ZOMBIE).removeIndex(15);
+        filter().type(EntityTypes1_13.EntityType.ZOMBIE).removeIndex(15);
 
         // Handle turtle metadata (Remove them all for now)
         filter().type(EntityTypes1_13.EntityType.TURTLE).cancel(13); // Home pos
@@ -308,8 +312,8 @@ public class EntityPackets1_13 extends LegacyEntityRewriter<ClientboundPackets1_
         filter().type(EntityTypes1_13.EntityType.TURTLE).cancel(18); // Traveling
 
         // Remove additional fish meta
-        filter().filterFamily(EntityTypes1_13.EntityType.ABSTRACT_FISHES).cancel(12);
-        filter().filterFamily(EntityTypes1_13.EntityType.ABSTRACT_FISHES).cancel(13);
+        filter().type(EntityTypes1_13.EntityType.ABSTRACT_FISHES).cancel(12);
+        filter().type(EntityTypes1_13.EntityType.ABSTRACT_FISHES).cancel(13);
 
         // Remove phantom size
         filter().type(EntityTypes1_13.EntityType.PHANTOM).cancel(12);

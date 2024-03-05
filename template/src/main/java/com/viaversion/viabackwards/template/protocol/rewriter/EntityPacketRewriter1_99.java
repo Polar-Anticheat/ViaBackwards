@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -93,6 +93,7 @@ public final class EntityPacketRewriter1_99 extends EntityRewriter<ClientboundPa
             meta.setMetaType(Types1_20_3.META_TYPES.byId(id));
         });*/
 
+        //TODO Component needs to handle tags
         registerMetaTypeHandler(
                 Types1_20_3.META_TYPES.itemType,
                 Types1_20_3.META_TYPES.blockStateType,
@@ -102,7 +103,7 @@ public final class EntityPacketRewriter1_99 extends EntityRewriter<ClientboundPa
                 Types1_20_3.META_TYPES.optionalComponentType
         );
 
-        filter().filterFamily(EntityTypes1_20_3.MINECART_ABSTRACT).index(11).handler((event, meta) -> {
+        filter().type(EntityTypes1_20_3.MINECART_ABSTRACT).index(11).handler((event, meta) -> {
             final int blockState = meta.value();
             meta.setValue(protocol.getMappingData().getNewBlockStateId(blockState));
         });

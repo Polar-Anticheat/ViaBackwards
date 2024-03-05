@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@ import com.viaversion.viaversion.api.protocol.packet.ServerboundPacketType;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 public abstract class BackwardsProtocol<CU extends ClientboundPacketType, CM extends ClientboundPacketType, SM extends ServerboundPacketType, SU extends ServerboundPacketType>
-        extends AbstractProtocol<CU, CM, SM, SU> {
+    extends AbstractProtocol<CU, CM, SM, SU> {
 
     protected BackwardsProtocol() {
     }

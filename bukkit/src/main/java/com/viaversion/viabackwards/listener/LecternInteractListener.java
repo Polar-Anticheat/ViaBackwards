@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -53,6 +53,7 @@ public class LecternInteractListener extends ViaBukkitListener {
         // Open a book with the text of the lectern's writable book
         ItemStack newBook = new ItemStack(Material.WRITTEN_BOOK);
         BookMeta newBookMeta = (BookMeta) newBook.getItemMeta();
+        //noinspection deprecation
         newBookMeta.setPages(meta.getPages());
         newBookMeta.setAuthor("an upsidedown person");
         newBookMeta.setTitle("buk");

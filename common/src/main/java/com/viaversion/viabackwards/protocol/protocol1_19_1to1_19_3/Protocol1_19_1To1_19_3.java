@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,6 +37,7 @@ import com.viaversion.viaversion.api.minecraft.entities.EntityTypes1_19_3;
 import com.viaversion.viaversion.api.minecraft.signature.SignableCommandArgumentsProvider;
 import com.viaversion.viaversion.api.minecraft.signature.model.MessageMetadata;
 import com.viaversion.viaversion.api.minecraft.signature.storage.ChatSession1_19_3;
+import com.viaversion.viaversion.api.protocol.packet.PacketWrapper;
 import com.viaversion.viaversion.api.protocol.packet.State;
 import com.viaversion.viaversion.api.protocol.remapper.PacketHandlers;
 import com.viaversion.viaversion.api.type.Type;
@@ -44,8 +45,6 @@ import com.viaversion.viaversion.api.type.types.BitSetType;
 import com.viaversion.viaversion.api.type.types.ByteArrayType;
 import com.viaversion.viaversion.data.entity.EntityTrackerBase;
 import com.viaversion.viaversion.libs.gson.JsonElement;
-import com.viaversion.viaversion.libs.kyori.adventure.text.Component;
-import com.viaversion.viaversion.libs.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import com.viaversion.viaversion.protocols.base.ClientboundLoginPackets;
 import com.viaversion.viaversion.protocols.base.ServerboundLoginPackets;
 import com.viaversion.viaversion.protocols.protocol1_19_1to1_19.ClientboundPackets1_19_1;
@@ -57,10 +56,11 @@ import com.viaversion.viaversion.rewriter.ComponentRewriter;
 import com.viaversion.viaversion.rewriter.StatisticsRewriter;
 import com.viaversion.viaversion.rewriter.TagRewriter;
 import com.viaversion.viaversion.util.CipherUtil;
+import com.viaversion.viaversion.util.ComponentUtil;
 import com.viaversion.viaversion.util.Pair;
-
 import java.util.BitSet;
 import java.util.List;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 public final class Protocol1_19_1To1_19_3 extends BackwardsProtocol<ClientboundPackets1_19_3, ClientboundPackets1_19_1, ServerboundPackets1_19_3, ServerboundPackets1_19_1> {
 
@@ -93,60 +93,19 @@ public final class Protocol1_19_1To1_19_3 extends BackwardsProtocol<ClientboundP
         final SoundRewriter<ClientboundPackets1_19_3> soundRewriter = new SoundRewriter<>(this);
         soundRewriter.registerStopSound(ClientboundPackets1_19_3.STOP_SOUND);
         registerClientbound(ClientboundPackets1_19_3.SOUND, wrapper -> {
-            final int soundId = wrapper.read(Type.VAR_INT) - 1; // Normalize the id
-            if (soundId != -1) {
-                final int mappedId = MAPPINGS.getSoundMappings().getNewId(soundId);
-                if (mappedId == -1) {
-                    wrapper.cancel();
-                    return;
-                }
-
-                wrapper.write(Type.VAR_INT, mappedId);
-                return;
-            }
-
-            String soundIdentifier = wrapper.read(Type.STRING);
-            wrapper.read(Type.OPTIONAL_FLOAT); // Fixed range
-            final String mappedIdentifier = MAPPINGS.getMappedNamedSound(soundIdentifier);
+            final String mappedIdentifier = rewriteSound(wrapper);
             if (mappedIdentifier != null) {
-                if (mappedIdentifier.isEmpty()) {
-                    wrapper.cancel();
-                    return;
-                }
-
-                soundIdentifier = mappedIdentifier;
+                wrapper.write(Type.STRING, mappedIdentifier);
+                wrapper.setPacketType(ClientboundPackets1_19_1.NAMED_SOUND);
             }
-
-            wrapper.write(Type.STRING, soundIdentifier);
-            wrapper.setPacketType(ClientboundPackets1_19_1.NAMED_SOUND);
         });
         registerClientbound(ClientboundPackets1_19_3.ENTITY_SOUND, wrapper -> {
-            final int soundId = wrapper.read(Type.VAR_INT) - 1; // Normalize the id
-            if (soundId != -1) {
-                final int mappedId = MAPPINGS.getSoundMappings().getNewId(soundId);
-                if (mappedId == -1) {
-                    wrapper.cancel();
-                    return;
-                }
-
-                wrapper.write(Type.VAR_INT, mappedId);
+            final String mappedIdentifier = rewriteSound(wrapper);
+            if (mappedIdentifier == null) {
                 return;
             }
 
-            // Convert the resource location to the corresponding integer id
-            String soundIdentifier = wrapper.read(Type.STRING);
-            wrapper.read(Type.OPTIONAL_FLOAT); // Fixed range
-            final String mappedIdentifier = MAPPINGS.getMappedNamedSound(soundIdentifier);
-            if (mappedIdentifier != null) {
-                if (mappedIdentifier.isEmpty()) {
-                    wrapper.cancel();
-                    return;
-                }
-
-                soundIdentifier = mappedIdentifier;
-            }
-
-            final int mappedId = MAPPINGS.mappedSound(soundIdentifier);
+            final int mappedId = MAPPINGS.mappedSound(mappedIdentifier);
             if (mappedId == -1) {
                 wrapper.cancel();
                 return;
@@ -179,7 +138,7 @@ public final class Protocol1_19_1To1_19_3 extends BackwardsProtocol<ClientboundP
 
                 if (nodeType == 2) { // Argument node
                     final int argumentTypeId = wrapper.read(Type.VAR_INT);
-                    final int mappedArgumentTypeId = MAPPINGS.getArgumentTypeMappings().mappings().getNewId(argumentTypeId);
+                    final int mappedArgumentTypeId = MAPPINGS.getArgumentTypeMappings().getNewId(argumentTypeId);
                     Preconditions.checkArgument(mappedArgumentTypeId != -1, "Unknown command argument type id: " + argumentTypeId);
                     wrapper.write(Type.VAR_INT, mappedArgumentTypeId);
 
@@ -347,7 +306,7 @@ public final class Protocol1_19_1To1_19_3 extends BackwardsProtocol<ClientboundP
                     }
 
                     final JsonElement unsignedContent = wrapper.read(Type.OPTIONAL_COMPONENT);
-                    final JsonElement content = unsignedContent != null ? unsignedContent : GsonComponentSerializer.gson().serializeToTree(Component.text(plainContent));
+                    final JsonElement content = unsignedContent != null ? unsignedContent : ComponentUtil.plainToJson(plainContent);
                     translatableRewriter.processText(content);
                     final int filterMaskType = wrapper.read(Type.VAR_INT);
                     if (filterMaskType == 2) {
@@ -387,6 +346,35 @@ public final class Protocol1_19_1To1_19_3 extends BackwardsProtocol<ClientboundP
         cancelClientbound(ClientboundPackets1_19_3.UPDATE_ENABLED_FEATURES);
         cancelServerbound(ServerboundPackets1_19_1.CHAT_PREVIEW);
         cancelServerbound(ServerboundPackets1_19_1.CHAT_ACK);
+    }
+
+    private @Nullable String rewriteSound(final PacketWrapper wrapper) throws Exception {
+        final int soundId = wrapper.read(Type.VAR_INT) - 1; // Normalize the id
+        if (soundId != -1) {
+            final int mappedId = MAPPINGS.getSoundMappings().getNewId(soundId);
+            if (mappedId == -1) {
+                wrapper.cancel();
+                return null;
+            }
+
+            wrapper.write(Type.VAR_INT, mappedId);
+            return null;
+        }
+
+        // Convert the resource location to the corresponding integer id
+        final String soundIdentifier = wrapper.read(Type.STRING);
+        wrapper.read(Type.OPTIONAL_FLOAT); // Fixed range
+        final String mappedIdentifier = MAPPINGS.getMappedNamedSound(soundIdentifier);
+        if (mappedIdentifier == null) {
+            return soundIdentifier;
+        }
+
+        if (mappedIdentifier.isEmpty()) {
+            wrapper.cancel();
+            return null;
+        }
+
+        return mappedIdentifier;
     }
 
     @Override

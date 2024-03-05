@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@ import com.viaversion.viaversion.util.MathUtil;
 public final class BlockItemPackets1_19 extends ItemRewriter<ClientboundPackets1_19, ServerboundPackets1_17, Protocol1_18_2To1_19> {
 
     public BlockItemPackets1_19(final Protocol1_18_2To1_19 protocol) {
-        super(protocol);
+        super(protocol, Type.ITEM1_13_2, Type.ITEM1_13_2_ARRAY);
     }
 
     @Override
@@ -52,7 +52,7 @@ public final class BlockItemPackets1_19 extends ItemRewriter<ClientboundPackets1
         registerWindowItems1_17_1(ClientboundPackets1_19.WINDOW_ITEMS);
         registerSetSlot1_17_1(ClientboundPackets1_19.SET_SLOT);
         registerEntityEquipmentArray(ClientboundPackets1_19.ENTITY_EQUIPMENT);
-        registerAdvancements(ClientboundPackets1_19.ADVANCEMENTS, Type.ITEM1_13_2);
+        registerAdvancements(ClientboundPackets1_19.ADVANCEMENTS);
         registerClickWindow1_17_1(ServerboundPackets1_17.CLICK_WINDOW);
 
         blockRewriter.registerBlockAction(ClientboundPackets1_19.BLOCK_ACTION);
@@ -60,7 +60,7 @@ public final class BlockItemPackets1_19 extends ItemRewriter<ClientboundPackets1
         blockRewriter.registerVarLongMultiBlockChange(ClientboundPackets1_19.MULTI_BLOCK_CHANGE);
         blockRewriter.registerEffect(ClientboundPackets1_19.EFFECT, 1010, 2001);
 
-        registerCreativeInvAction(ServerboundPackets1_17.CREATIVE_INVENTORY_ACTION, Type.ITEM1_13_2);
+        registerCreativeInvAction(ServerboundPackets1_17.CREATIVE_INVENTORY_ACTION);
 
         protocol.registerClientbound(ClientboundPackets1_19.TRADE_LIST, new PacketHandlers() {
             @Override
@@ -142,8 +142,8 @@ public final class BlockItemPackets1_19 extends ItemRewriter<ClientboundPackets1
         protocol.registerClientbound(ClientboundPackets1_19.CHUNK_DATA, wrapper -> {
             final EntityTracker tracker = protocol.getEntityRewriter().tracker(wrapper.user());
             final ChunkType1_18 chunkType = new ChunkType1_18(tracker.currentWorldSectionHeight(),
-                    MathUtil.ceilLog2(protocol.getMappingData().getBlockStateMappings().mappedSize()),
-                    MathUtil.ceilLog2(tracker.biomesSent()));
+                MathUtil.ceilLog2(protocol.getMappingData().getBlockStateMappings().mappedSize()),
+                MathUtil.ceilLog2(tracker.biomesSent()));
             final Chunk chunk = wrapper.passthrough(chunkType);
             for (final ChunkSection section : chunk.getSections()) {
                 final DataPalette blockPalette = section.palette(PaletteType.BLOCKS);

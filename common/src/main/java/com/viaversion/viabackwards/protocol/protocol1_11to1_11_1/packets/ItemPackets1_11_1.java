@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,6 @@ import com.viaversion.viaversion.api.minecraft.item.Item;
 import com.viaversion.viaversion.api.protocol.remapper.PacketHandlers;
 import com.viaversion.viaversion.api.type.Type;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.CompoundTag;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.ListTag;
 import com.viaversion.viaversion.protocols.protocol1_9_3to1_9_1_2.ClientboundPackets1_9_3;
 import com.viaversion.viaversion.protocols.protocol1_9_3to1_9_1_2.ServerboundPackets1_9_3;
 
@@ -39,9 +38,9 @@ public class ItemPackets1_11_1 extends LegacyBlockItemRewriter<ClientboundPacket
 
     @Override
     protected void registerPackets() {
-        registerSetSlot(ClientboundPackets1_9_3.SET_SLOT, Type.ITEM1_8);
-        registerWindowItems(ClientboundPackets1_9_3.WINDOW_ITEMS, Type.ITEM1_8_SHORT_ARRAY);
-        registerEntityEquipment(ClientboundPackets1_9_3.ENTITY_EQUIPMENT, Type.ITEM1_8);
+        registerSetSlot(ClientboundPackets1_9_3.SET_SLOT);
+        registerWindowItems(ClientboundPackets1_9_3.WINDOW_ITEMS);
+        registerEntityEquipment(ClientboundPackets1_9_3.ENTITY_EQUIPMENT);
 
         // Plugin message Packet -> Trading
         protocol.registerClientbound(ClientboundPackets1_9_3.PLUGIN_MESSAGE, new PacketHandlers() {
@@ -50,7 +49,7 @@ public class ItemPackets1_11_1 extends LegacyBlockItemRewriter<ClientboundPacket
                 map(Type.STRING); // 0 - Channel
 
                 handler(wrapper -> {
-                    if (wrapper.get(Type.STRING, 0).equalsIgnoreCase("MC|TrList")) {
+                    if (wrapper.get(Type.STRING, 0).equals("MC|TrList")) {
                         wrapper.passthrough(Type.INT); // Passthrough Window ID
 
                         int size = wrapper.passthrough(Type.UNSIGNED_BYTE);
@@ -72,8 +71,8 @@ public class ItemPackets1_11_1 extends LegacyBlockItemRewriter<ClientboundPacket
             }
         });
 
-        registerClickWindow(ServerboundPackets1_9_3.CLICK_WINDOW, Type.ITEM1_8);
-        registerCreativeInvAction(ServerboundPackets1_9_3.CREATIVE_INVENTORY_ACTION, Type.ITEM1_8);
+        registerClickWindow(ServerboundPackets1_9_3.CLICK_WINDOW);
+        registerCreativeInvAction(ServerboundPackets1_9_3.CREATIVE_INVENTORY_ACTION);
 
         // Handle item metadata
         protocol.getEntityRewriter().filter().handler((event, meta) -> {
@@ -97,10 +96,10 @@ public class ItemPackets1_11_1 extends LegacyBlockItemRewriter<ClientboundPacket
         CompoundTag tag = item.tag();
         if (tag == null) return item;
 
-        if (tag.get("ench") instanceof ListTag) {
+        if (tag.getListTag("ench") != null) {
             enchantmentRewriter.rewriteEnchantmentsToClient(tag, false);
         }
-        if (tag.get("StoredEnchantments") instanceof ListTag) {
+        if (tag.getListTag("StoredEnchantments") != null) {
             enchantmentRewriter.rewriteEnchantmentsToClient(tag, true);
         }
         return item;
@@ -114,10 +113,10 @@ public class ItemPackets1_11_1 extends LegacyBlockItemRewriter<ClientboundPacket
         CompoundTag tag = item.tag();
         if (tag == null) return item;
 
-        if (tag.contains(nbtTagName + "|ench")) {
+        if (tag.getListTag(nbtTagName + "|ench") != null) {
             enchantmentRewriter.rewriteEnchantmentsToServer(tag, false);
         }
-        if (tag.contains(nbtTagName + "|StoredEnchantments")) {
+        if (tag.getListTag(nbtTagName + "|StoredEnchantments") != null) {
             enchantmentRewriter.rewriteEnchantmentsToServer(tag, true);
         }
         return item;

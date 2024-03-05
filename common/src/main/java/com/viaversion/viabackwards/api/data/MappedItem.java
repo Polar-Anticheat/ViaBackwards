@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
  */
 package com.viaversion.viabackwards.api.data;
 
-import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.ChatRewriter;
+import com.viaversion.viaversion.util.ComponentUtil;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 public class MappedItem {
@@ -32,7 +32,7 @@ public class MappedItem {
 
     public MappedItem(final int id, final String name, @Nullable final Integer customModelData) {
         this.id = id;
-        this.jsonName = ChatRewriter.legacyTextToJsonString("§f" + name, true);
+        this.jsonName = ComponentUtil.legacyToJsonString("§f" + name, true);
         this.customModelData = customModelData;
     }
 

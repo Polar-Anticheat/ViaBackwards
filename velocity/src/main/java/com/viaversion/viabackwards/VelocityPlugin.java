@@ -1,6 +1,6 @@
 /*
  * This file is part of ViaBackwards - https://github.com/ViaVersion/ViaBackwards
- * Copyright (C) 2016-2023 ViaVersion and contributors
+ * Copyright (C) 2016-2024 ViaVersion and contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,7 +28,6 @@ import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.viaversion.viabackwards.api.ViaBackwardsPlatform;
 import com.viaversion.viabackwards.utils.VersionInfo;
 import com.viaversion.viaversion.api.Via;
-import com.viaversion.viaversion.api.data.MappingDataLoader;
 import com.viaversion.viaversion.velocity.util.LoggerWrapper;
 import java.io.File;
 import java.nio.file.Path;
@@ -38,7 +37,7 @@ import java.util.logging.Logger;
         name = "ViaBackwards",
         version = VersionInfo.VERSION,
         authors = {"Matsv", "kennytv", "Gerrygames", "creeper123123321", "ForceUpdate1"},
-        description = "Allow older Minecraft versions to connect to a newer server version.",
+        description = "Allows older Minecraft client versions to connect to newer server versions.",
         dependencies = {@Dependency(id = "viaversion")}
 )
 public class VelocityPlugin implements ViaBackwardsPlatform {
