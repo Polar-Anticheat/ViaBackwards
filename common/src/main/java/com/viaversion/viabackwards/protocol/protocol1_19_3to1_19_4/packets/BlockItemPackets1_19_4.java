@@ -17,7 +17,7 @@
  */
 package com.viaversion.viabackwards.protocol.protocol1_19_3to1_19_4.packets;
 
-import com.viaversion.viabackwards.api.rewriters.ItemRewriter;
+import com.viaversion.viabackwards.api.rewriters.BackwardsItemRewriter;
 import com.viaversion.viabackwards.protocol.protocol1_19_3to1_19_4.Protocol1_19_3To1_19_4;
 import com.viaversion.viaversion.api.protocol.packet.PacketWrapper;
 import com.viaversion.viaversion.api.protocol.remapper.PacketHandlers;
@@ -29,7 +29,7 @@ import com.viaversion.viaversion.protocols.protocol1_19_4to1_19_3.ClientboundPac
 import com.viaversion.viaversion.rewriter.BlockRewriter;
 import com.viaversion.viaversion.util.Key;
 
-public final class BlockItemPackets1_19_4 extends ItemRewriter<ClientboundPackets1_19_4, ServerboundPackets1_19_3, Protocol1_19_3To1_19_4> {
+public final class BlockItemPackets1_19_4 extends BackwardsItemRewriter<ClientboundPackets1_19_4, ServerboundPackets1_19_3, Protocol1_19_3To1_19_4> {
 
     public BlockItemPackets1_19_4(final Protocol1_19_3To1_19_4 protocol) {
         super(protocol, Type.ITEM1_13_2, Type.ITEM1_13_2_ARRAY);
@@ -59,7 +59,7 @@ public final class BlockItemPackets1_19_4 extends ItemRewriter<ClientboundPacket
                         wrapper.set(Type.VAR_INT, 1, windowType - 1);
                     }
 
-                    protocol.getTranslatableRewriter().processText(wrapper.get(Type.COMPONENT, 0));
+                    protocol.getTranslatableRewriter().processText(wrapper.user(), wrapper.get(Type.COMPONENT, 0));
                 });
             }
         });
@@ -84,7 +84,7 @@ public final class BlockItemPackets1_19_4 extends ItemRewriter<ClientboundPacket
                 for (int i = 0; i < ingredients; i++) {
                     handleIngredient(wrapper);
                 }
-                rewrite(wrapper.passthrough(Type.ITEM1_13_2)); // Result
+                rewrite(wrapper.user(), wrapper.passthrough(Type.ITEM1_13_2)); // Result
 
                 // Remove notification boolean
                 wrapper.read(Type.BOOLEAN);

@@ -17,9 +17,10 @@
  */
 package com.viaversion.viabackwards.protocol.protocol1_19_4to1_20.packets;
 
-import com.viaversion.viabackwards.api.rewriters.ItemRewriter;
+import com.viaversion.viabackwards.api.rewriters.BackwardsItemRewriter;
 import com.viaversion.viabackwards.protocol.protocol1_19_4to1_20.Protocol1_19_4To1_20;
 import com.viaversion.viabackwards.protocol.protocol1_19_4to1_20.storage.BackSignEditStorage;
+import com.viaversion.viaversion.api.connection.UserConnection;
 import com.viaversion.viaversion.api.minecraft.BlockChangeRecord;
 import com.viaversion.viaversion.api.minecraft.Position;
 import com.viaversion.viaversion.api.minecraft.blockentity.BlockEntity;
@@ -41,7 +42,7 @@ import java.util.HashSet;
 import java.util.Set;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-public final class BlockItemPackets1_20 extends ItemRewriter<ClientboundPackets1_19_4, ServerboundPackets1_19_4, Protocol1_19_4To1_20> {
+public final class BlockItemPackets1_20 extends BackwardsItemRewriter<ClientboundPackets1_19_4, ServerboundPackets1_19_4, Protocol1_19_4To1_20> {
 
     private static final Set<String> NEW_TRIM_PATTERNS = new HashSet<>(Arrays.asList("host", "raiser", "shaper", "silence", "wayfinder"));
 
@@ -60,7 +61,7 @@ public final class BlockItemPackets1_20 extends ItemRewriter<ClientboundPackets1
         protocol.registerClientbound(ClientboundPackets1_19_4.CHUNK_DATA, new PacketHandlers() {
             @Override
             protected void register() {
-                handler(blockRewriter.chunkDataHandler1_19(ChunkType1_18::new, BlockItemPackets1_20.this::handleBlockEntity));
+                handler(blockRewriter.chunkDataHandler1_19(ChunkType1_18::new, (user, blockEntity) -> handleBlockEntity(blockEntity)));
                 create(Type.BOOLEAN, true); // Trust edges
             }
         });
@@ -100,16 +101,13 @@ public final class BlockItemPackets1_20 extends ItemRewriter<ClientboundPackets1
             int size = wrapper.passthrough(Type.VAR_INT); // Mapping size
             for (int i = 0; i < size; i++) {
                 wrapper.passthrough(Type.STRING); // Identifier
-
-                // Parent
-                if (wrapper.passthrough(Type.BOOLEAN))
-                    wrapper.passthrough(Type.STRING);
+                wrapper.passthrough(Type.OPTIONAL_STRING); // Parent
 
                 // Display data
                 if (wrapper.passthrough(Type.BOOLEAN)) {
                     wrapper.passthrough(Type.COMPONENT); // Title
                     wrapper.passthrough(Type.COMPONENT); // Description
-                    handleItemToClient(wrapper.passthrough(Type.ITEM1_13_2)); // Icon
+                    handleItemToClient(wrapper.user(), wrapper.passthrough(Type.ITEM1_13_2)); // Icon
                     wrapper.passthrough(Type.VAR_INT); // Frame type
                     int flags = wrapper.passthrough(Type.INT); // Flags
                     if ((flags & 1) != 0) {
@@ -150,12 +148,12 @@ public final class BlockItemPackets1_20 extends ItemRewriter<ClientboundPackets1
     }
 
     @Override
-    public @Nullable Item handleItemToClient(@Nullable final Item item) {
+    public @Nullable Item handleItemToClient(UserConnection connection, @Nullable final Item item) {
         if (item == null) {
             return null;
         }
 
-        super.handleItemToClient(item);
+        super.handleItemToClient(connection, item);
 
         // Remove new trim tags
         final CompoundTag trimTag;
@@ -166,7 +164,7 @@ public final class BlockItemPackets1_20 extends ItemRewriter<ClientboundPackets1
                 final String pattern = Key.stripMinecraftNamespace(patternTag.getValue());
                 if (NEW_TRIM_PATTERNS.contains(pattern)) {
                     tag.remove("Trim");
-                    tag.put(nbtTagName + "|Trim", trimTag);
+                    tag.put(nbtTagName("Trim"), trimTag);
                 }
             }
         }
@@ -174,17 +172,17 @@ public final class BlockItemPackets1_20 extends ItemRewriter<ClientboundPackets1
     }
 
     @Override
-    public @Nullable Item handleItemToServer(@Nullable final Item item) {
+    public @Nullable Item handleItemToServer(UserConnection connection, @Nullable final Item item) {
         if (item == null) {
             return null;
         }
 
-        super.handleItemToServer(item);
+        super.handleItemToServer(connection, item);
 
         // Add back original trim tag
         final Tag trimTag;
         final CompoundTag tag = item.tag();
-        if (tag != null && (trimTag = tag.remove(nbtTagName + "|Trim")) != null) {
+        if (tag != null && (trimTag = tag.remove(nbtTagName("Trim"))) != null) {
             tag.put("Trim", trimTag);
         }
         return item;
@@ -218,13 +216,13 @@ public final class BlockItemPackets1_20 extends ItemRewriter<ClientboundPackets1
     }
 
     private void writeMessages(final CompoundTag frontText, final CompoundTag tag, final boolean filtered) {
-        final ListTag messages = frontText.getListTag(filtered ? "filtered_messages" : "messages");
+        final ListTag<StringTag> messages = frontText.getListTag(filtered ? "filtered_messages" : "messages", StringTag.class);
         if (messages == null) {
             return;
         }
 
         int i = 0;
-        for (final Tag message : messages) {
+        for (final StringTag message : messages) {
             tag.put((filtered ? "FilteredText" : "Text") + ++i, message);
         }
 

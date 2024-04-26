@@ -51,6 +51,7 @@ public final class Protocol1_20To1_20_2 extends BackwardsProtocol<ClientboundPac
     public static final BackwardsMappings MAPPINGS = new BackwardsMappings("1.20.2", "1.20", Protocol1_20_2To1_20.class);
     private final EntityPacketRewriter1_20_2 entityPacketRewriter = new EntityPacketRewriter1_20_2(this);
     private final BlockItemPacketRewriter1_20_2 itemPacketRewriter = new BlockItemPacketRewriter1_20_2(this);
+    private final TagRewriter<ClientboundPackets1_20_2> tagRewriter = new TagRewriter<>(this);
 
     public Protocol1_20To1_20_2() {
         super(ClientboundPackets1_20_2.class, ClientboundPackets1_19_4.class, ServerboundPackets1_20_2.class, ServerboundPackets1_19_4.class);
@@ -60,12 +61,11 @@ public final class Protocol1_20To1_20_2 extends BackwardsProtocol<ClientboundPac
     protected void registerPackets() {
         super.registerPackets();
 
-        final TagRewriter<ClientboundPackets1_20_2> tagRewriter = new TagRewriter<>(this);
         tagRewriter.registerGeneric(ClientboundPackets1_20_2.TAGS);
 
         final SoundRewriter<ClientboundPackets1_20_2> soundRewriter = new SoundRewriter<>(this);
         soundRewriter.register1_19_3Sound(ClientboundPackets1_20_2.SOUND);
-        soundRewriter.registerSound(ClientboundPackets1_20_2.ENTITY_SOUND);
+        soundRewriter.register1_19_3Sound(ClientboundPackets1_20_2.ENTITY_SOUND);
         soundRewriter.registerStopSound(ClientboundPackets1_20_2.STOP_SOUND);
 
         registerClientbound(ClientboundPackets1_20_2.DISPLAY_SCOREBOARD, wrapper -> {
@@ -215,5 +215,10 @@ public final class Protocol1_20To1_20_2 extends BackwardsProtocol<ClientboundPac
     @Override
     public ItemRewriter<Protocol1_20To1_20_2> getItemRewriter() {
         return itemPacketRewriter;
+    }
+
+    @Override
+    public TagRewriter<ClientboundPackets1_20_2> getTagRewriter() {
+        return tagRewriter;
     }
 }

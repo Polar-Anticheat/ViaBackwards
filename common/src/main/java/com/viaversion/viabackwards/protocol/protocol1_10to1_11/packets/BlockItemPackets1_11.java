@@ -27,7 +27,6 @@ import com.viaversion.viabackwards.protocol.protocol1_10to1_11.storage.WindowTra
 import com.viaversion.viaversion.api.connection.UserConnection;
 import com.viaversion.viaversion.api.data.entity.EntityTracker;
 import com.viaversion.viaversion.api.data.entity.StoredEntityData;
-import com.viaversion.viaversion.api.minecraft.BlockChangeRecord;
 import com.viaversion.viaversion.api.minecraft.ClientWorld;
 import com.viaversion.viaversion.api.minecraft.chunks.Chunk;
 import com.viaversion.viaversion.api.minecraft.entities.EntityTypes1_11;
@@ -38,9 +37,10 @@ import com.viaversion.viaversion.api.type.Type;
 import com.viaversion.viaversion.api.type.types.chunk.ChunkType1_9_3;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.CompoundTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.StringTag;
-import com.viaversion.viaversion.protocols.protocol1_11to1_10.EntityIdRewriter;
+import com.viaversion.viaversion.protocols.protocol1_11to1_10.rewriter.EntityIdRewriter;
 import com.viaversion.viaversion.protocols.protocol1_9_3to1_9_1_2.ClientboundPackets1_9_3;
 import com.viaversion.viaversion.protocols.protocol1_9_3to1_9_1_2.ServerboundPackets1_9_3;
+import com.viaversion.viaversion.util.IdAndData;
 import java.util.Arrays;
 import java.util.Optional;
 
@@ -49,11 +49,14 @@ public class BlockItemPackets1_11 extends LegacyBlockItemRewriter<ClientboundPac
     private LegacyEnchantmentRewriter enchantmentRewriter;
 
     public BlockItemPackets1_11(Protocol1_10To1_11 protocol) {
-        super(protocol);
+        super(protocol, "1.11");
     }
 
     @Override
     protected void registerPackets() {
+        registerBlockChange(ClientboundPackets1_9_3.BLOCK_CHANGE);
+        registerMultiBlockChange(ClientboundPackets1_9_3.MULTI_BLOCK_CHANGE);
+
         protocol.registerClientbound(ClientboundPackets1_9_3.SET_SLOT, new PacketHandlers() {
             @Override
             public void register() {
@@ -61,7 +64,7 @@ public class BlockItemPackets1_11 extends LegacyBlockItemRewriter<ClientboundPac
                 map(Type.SHORT); // 1 - Slot ID
                 map(Type.ITEM1_8); // 2 - Slot Value
 
-                handler(itemToClientHandler(Type.ITEM1_8));
+                handler(wrapper -> handleItemToClient(wrapper.user(), wrapper.get(Type.ITEM1_8, 0)));
 
                 // Handle Llama
                 handler(wrapper -> {
@@ -87,7 +90,7 @@ public class BlockItemPackets1_11 extends LegacyBlockItemRewriter<ClientboundPac
                 handler(wrapper -> {
                     Item[] stacks = wrapper.get(Type.ITEM1_8_SHORT_ARRAY, 0);
                     for (int i = 0; i < stacks.length; i++)
-                        stacks[i] = handleItemToClient(stacks[i]);
+                        stacks[i] = handleItemToClient(wrapper.user(), stacks[i]);
 
                     if (isLlama(wrapper.user())) {
                         Optional<ChestedHorseStorage> horse = getChestedHorse(wrapper.user());
@@ -120,12 +123,12 @@ public class BlockItemPackets1_11 extends LegacyBlockItemRewriter<ClientboundPac
 
                         int size = wrapper.passthrough(Type.UNSIGNED_BYTE);
                         for (int i = 0; i < size; i++) {
-                            wrapper.write(Type.ITEM1_8, handleItemToClient(wrapper.read(Type.ITEM1_8))); // Input Item
-                            wrapper.write(Type.ITEM1_8, handleItemToClient(wrapper.read(Type.ITEM1_8))); // Output Item
+                            wrapper.write(Type.ITEM1_8, handleItemToClient(wrapper.user(), wrapper.read(Type.ITEM1_8))); // Input Item
+                            wrapper.write(Type.ITEM1_8, handleItemToClient(wrapper.user(), wrapper.read(Type.ITEM1_8))); // Output Item
 
                             boolean secondItem = wrapper.passthrough(Type.BOOLEAN); // Has second item
                             if (secondItem) {
-                                wrapper.write(Type.ITEM1_8, handleItemToClient(wrapper.read(Type.ITEM1_8))); // Second Item
+                                wrapper.write(Type.ITEM1_8, handleItemToClient(wrapper.user(), wrapper.read(Type.ITEM1_8))); // Second Item
                             }
 
                             wrapper.passthrough(Type.BOOLEAN); // Trade disabled
@@ -147,7 +150,7 @@ public class BlockItemPackets1_11 extends LegacyBlockItemRewriter<ClientboundPac
                 map(Type.VAR_INT); // 4 - Mode
                 map(Type.ITEM1_8); // 5 - Clicked Item
 
-                handler(itemToServerHandler(Type.ITEM1_8));
+                handler(wrapper -> handleItemToServer(wrapper.user(), wrapper.get(Type.ITEM1_8, 0)));
 
                 // Llama slot
                 handler(wrapper -> {
@@ -184,34 +187,6 @@ public class BlockItemPackets1_11 extends LegacyBlockItemRewriter<ClientboundPac
                 if (id.equals("minecraft:sign")) {
                     idTag.setValue("Sign");
                 }
-            }
-        });
-
-        protocol.registerClientbound(ClientboundPackets1_9_3.BLOCK_CHANGE, new PacketHandlers() {
-            @Override
-            public void register() {
-                map(Type.POSITION1_8); // 0 - Block Position
-                map(Type.VAR_INT); // 1 - Block
-
-                handler(wrapper -> {
-                    int idx = wrapper.get(Type.VAR_INT, 0);
-                    wrapper.set(Type.VAR_INT, 0, handleBlockID(idx));
-                });
-            }
-        });
-
-        protocol.registerClientbound(ClientboundPackets1_9_3.MULTI_BLOCK_CHANGE, new PacketHandlers() {
-            @Override
-            public void register() {
-                map(Type.INT); // 0 - Chunk X
-                map(Type.INT); // 1 - Chunk Z
-                map(Type.BLOCK_CHANGE_RECORD_ARRAY);
-
-                handler(wrapper -> {
-                    for (BlockChangeRecord record : wrapper.get(Type.BLOCK_CHANGE_RECORD_ARRAY, 0)) {
-                        record.setBlockId(handleBlockID(record.getBlockId()));
-                    }
-                });
             }
         });
 
@@ -292,20 +267,20 @@ public class BlockItemPackets1_11 extends LegacyBlockItemRewriter<ClientboundPac
 
         protocol.getEntityRewriter().filter().handler((event, meta) -> {
             if (meta.metaType().type().equals(Type.ITEM1_8)) // Is Item
-                meta.setValue(handleItemToClient((Item) meta.getValue()));
+                meta.setValue(handleItemToClient(event.user(), (Item) meta.getValue()));
         });
     }
 
     @Override
     protected void registerRewrites() {
         // Handle spawner block entity (map to itself with custom handler)
-        MappedLegacyBlockItem data = replacementData.computeIfAbsent(52 << 4, s -> new MappedLegacyBlockItem(52, (short) -1, null, false));
+        MappedLegacyBlockItem data = replacementData.computeIfAbsent(IdAndData.toRawData(52), s -> new MappedLegacyBlockItem(52));
         data.setBlockEntityHandler((b, tag) -> {
             EntityIdRewriter.toClientSpawner(tag, true);
             return tag;
         });
 
-        enchantmentRewriter = new LegacyEnchantmentRewriter(nbtTagName);
+        enchantmentRewriter = new LegacyEnchantmentRewriter(nbtTagName());
         enchantmentRewriter.registerEnchantment(71, "§cCurse of Vanishing");
         enchantmentRewriter.registerEnchantment(10, "§cCurse of Binding");
 
@@ -313,9 +288,9 @@ public class BlockItemPackets1_11 extends LegacyBlockItemRewriter<ClientboundPac
     }
 
     @Override
-    public Item handleItemToClient(Item item) {
+    public Item handleItemToClient(UserConnection connection, Item item) {
         if (item == null) return null;
-        super.handleItemToClient(item);
+        super.handleItemToClient(connection, item);
 
         CompoundTag tag = item.tag();
         if (tag == null) return item;
@@ -323,19 +298,14 @@ public class BlockItemPackets1_11 extends LegacyBlockItemRewriter<ClientboundPac
         // Rewrite spawn eggs (id checks are done in the method itself)
         EntityIdRewriter.toClientItem(item, true);
 
-        if (tag.getListTag("ench") != null) {
-            enchantmentRewriter.rewriteEnchantmentsToClient(tag, false);
-        }
-        if (tag.getListTag("StoredEnchantments") != null) {
-            enchantmentRewriter.rewriteEnchantmentsToClient(tag, true);
-        }
+        enchantmentRewriter.handleToClient(item);
         return item;
     }
 
     @Override
-    public Item handleItemToServer(Item item) {
+    public Item handleItemToServer(UserConnection connection, Item item) {
         if (item == null) return null;
-        super.handleItemToServer(item);
+        super.handleItemToServer(connection, item);
 
         CompoundTag tag = item.tag();
         if (tag == null) return item;
@@ -343,12 +313,7 @@ public class BlockItemPackets1_11 extends LegacyBlockItemRewriter<ClientboundPac
         // Rewrite spawn eggs (id checks are done in the method itself)
         EntityIdRewriter.toServerItem(item, true);
 
-        if (tag.getListTag(nbtTagName + "|ench") != null) {
-            enchantmentRewriter.rewriteEnchantmentsToServer(tag, false);
-        }
-        if (tag.getListTag(nbtTagName + "|StoredEnchantments") != null) {
-            enchantmentRewriter.rewriteEnchantmentsToServer(tag, true);
-        }
+        enchantmentRewriter.handleToServer(item);
         return item;
     }
 

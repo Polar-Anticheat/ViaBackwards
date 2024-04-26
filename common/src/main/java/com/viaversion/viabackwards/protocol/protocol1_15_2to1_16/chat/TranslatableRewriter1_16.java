@@ -19,11 +19,13 @@ package com.viaversion.viabackwards.protocol.protocol1_15_2to1_16.chat;
 
 import com.viaversion.viabackwards.api.rewriters.TranslatableRewriter;
 import com.viaversion.viabackwards.protocol.protocol1_15_2to1_16.Protocol1_15_2To1_16;
+import com.viaversion.viaversion.api.connection.UserConnection;
 import com.viaversion.viaversion.libs.gson.JsonElement;
 import com.viaversion.viaversion.libs.gson.JsonObject;
 import com.viaversion.viaversion.libs.gson.JsonPrimitive;
 import com.viaversion.viaversion.protocols.protocol1_16to1_15_2.ClientboundPackets1_16;
 import com.viaversion.viaversion.util.ComponentUtil;
+import com.viaversion.viaversion.util.SerializerVersion;
 
 public class TranslatableRewriter1_16 extends TranslatableRewriter<ClientboundPackets1_16> {
 
@@ -51,8 +53,8 @@ public class TranslatableRewriter1_16 extends TranslatableRewriter<ClientboundPa
     }
 
     @Override
-    public void processText(JsonElement value) {
-        super.processText(value);
+    public void processText(UserConnection connection, JsonElement value) {
+        super.processText(connection, value);
 
         if (value == null || !value.isJsonObject()) return;
 
@@ -74,7 +76,7 @@ public class TranslatableRewriter1_16 extends TranslatableRewriter<ClientboundPa
         }
 
         // show_text as chat component json, show_entity and show_item serialized as snbt
-        JsonObject convertedObject = (JsonObject) ComponentUtil.convertJson(object, ComponentUtil.SerializerVersion.V1_16, ComponentUtil.SerializerVersion.V1_15);
+        JsonObject convertedObject = (JsonObject) ComponentUtil.convertJson(object, SerializerVersion.V1_16, SerializerVersion.V1_15);
         object.add("hoverEvent", convertedObject.getAsJsonObject("hoverEvent"));
     }
 

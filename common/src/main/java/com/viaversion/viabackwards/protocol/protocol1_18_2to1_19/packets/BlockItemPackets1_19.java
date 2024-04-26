@@ -17,7 +17,7 @@
  */
 package com.viaversion.viabackwards.protocol.protocol1_18_2to1_19.packets;
 
-import com.viaversion.viabackwards.api.rewriters.ItemRewriter;
+import com.viaversion.viabackwards.api.rewriters.BackwardsItemRewriter;
 import com.viaversion.viabackwards.protocol.protocol1_18_2to1_19.Protocol1_18_2To1_19;
 import com.viaversion.viaversion.api.data.ParticleMappings;
 import com.viaversion.viaversion.api.data.entity.EntityTracker;
@@ -36,7 +36,7 @@ import com.viaversion.viaversion.rewriter.BlockRewriter;
 import com.viaversion.viaversion.rewriter.RecipeRewriter;
 import com.viaversion.viaversion.util.MathUtil;
 
-public final class BlockItemPackets1_19 extends ItemRewriter<ClientboundPackets1_19, ServerboundPackets1_17, Protocol1_18_2To1_19> {
+public final class BlockItemPackets1_19 extends BackwardsItemRewriter<ClientboundPackets1_19, ServerboundPackets1_17, Protocol1_18_2To1_19> {
 
     public BlockItemPackets1_19(final Protocol1_18_2To1_19 protocol) {
         super(protocol, Type.ITEM1_13_2, Type.ITEM1_13_2_ARRAY);
@@ -70,12 +70,12 @@ public final class BlockItemPackets1_19 extends ItemRewriter<ClientboundPackets1
                     final int size = wrapper.read(Type.VAR_INT);
                     wrapper.write(Type.UNSIGNED_BYTE, (short) size);
                     for (int i = 0; i < size; i++) {
-                        handleItemToClient(wrapper.passthrough(Type.ITEM1_13_2)); // First item
-                        handleItemToClient(wrapper.passthrough(Type.ITEM1_13_2)); // Result
+                        handleItemToClient(wrapper.user(), wrapper.passthrough(Type.ITEM1_13_2)); // First item
+                        handleItemToClient(wrapper.user(), wrapper.passthrough(Type.ITEM1_13_2)); // Result
 
                         final Item secondItem = wrapper.read(Type.ITEM1_13_2);
                         if (secondItem != null) {
-                            handleItemToClient(secondItem);
+                            handleItemToClient(wrapper.user(), secondItem);
                             wrapper.write(Type.BOOLEAN, true);
                             wrapper.write(Type.ITEM1_13_2, secondItem);
                         } else {

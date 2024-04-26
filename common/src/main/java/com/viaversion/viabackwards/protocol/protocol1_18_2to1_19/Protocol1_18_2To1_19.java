@@ -47,8 +47,8 @@ import com.viaversion.viaversion.protocols.base.ClientboundLoginPackets;
 import com.viaversion.viaversion.protocols.base.ServerboundLoginPackets;
 import com.viaversion.viaversion.protocols.protocol1_17to1_16_4.ServerboundPackets1_17;
 import com.viaversion.viaversion.protocols.protocol1_18to1_17_1.ClientboundPackets1_18;
-import com.viaversion.viaversion.protocols.protocol1_19_1to1_19.ChatDecorationResult;
 import com.viaversion.viaversion.protocols.protocol1_19_1to1_19.Protocol1_19_1To1_19;
+import com.viaversion.viaversion.protocols.protocol1_19_1to1_19.data.ChatDecorationResult;
 import com.viaversion.viaversion.protocols.protocol1_19to1_18_2.ClientboundPackets1_19;
 import com.viaversion.viaversion.protocols.protocol1_19to1_18_2.ServerboundPackets1_19;
 import com.viaversion.viaversion.rewriter.CommandRewriter;
@@ -69,6 +69,7 @@ public final class Protocol1_18_2To1_19 extends BackwardsProtocol<ClientboundPac
     private final EntityPackets1_19 entityRewriter = new EntityPackets1_19(this);
     private final BlockItemPackets1_19 blockItemPackets = new BlockItemPackets1_19(this);
     private final TranslatableRewriter<ClientboundPackets1_19> translatableRewriter = new TranslatableRewriter<>(this, ComponentRewriter.ReadType.JSON);
+    private final TagRewriter<ClientboundPackets1_19> tagRewriter = new TagRewriter<>(this);
 
     public Protocol1_18_2To1_19() {
         super(ClientboundPackets1_19.class, ClientboundPackets1_18.class, ServerboundPackets1_19.class, ServerboundPackets1_17.class);
@@ -131,7 +132,6 @@ public final class Protocol1_18_2To1_19 extends BackwardsProtocol<ClientboundPac
             }
         });
 
-        final TagRewriter<ClientboundPackets1_19> tagRewriter = new TagRewriter<>(this);
         tagRewriter.removeTags("minecraft:banner_pattern");
         tagRewriter.removeTags("minecraft:instrument");
         tagRewriter.removeTags("minecraft:cat_variant");
@@ -200,7 +200,7 @@ public final class Protocol1_18_2To1_19 extends BackwardsProtocol<ClientboundPac
                         return;
                     }
 
-                    translatableRewriter.processText(decorationResult.content());
+                    translatableRewriter.processText(wrapper.user(), decorationResult.content());
                     wrapper.write(Type.COMPONENT, decorationResult.content());
                     wrapper.write(Type.BYTE, decorationResult.overlay() ? (byte) 2 : 1);
                     wrapper.write(Type.UUID, sender);
@@ -216,7 +216,7 @@ public final class Protocol1_18_2To1_19 extends BackwardsProtocol<ClientboundPac
             public void register() {
                 handler(wrapper -> {
                     final JsonElement content = wrapper.passthrough(Type.COMPONENT);
-                    translatableRewriter.processText(content);
+                    translatableRewriter.processText(wrapper.user(), content);
 
                     // Screw everything that isn't a system or game info type (which would only happen on funny 1.19.0 servers)
                     final int typeId = wrapper.read(Type.VAR_INT);
@@ -290,9 +290,7 @@ public final class Protocol1_18_2To1_19 extends BackwardsProtocol<ClientboundPac
                     for (int i = 0; i < properties; i++) {
                         wrapper.read(Type.STRING); // Name
                         wrapper.read(Type.STRING); // Value
-                        if (wrapper.read(Type.BOOLEAN)) {
-                            wrapper.read(Type.STRING); // Signature
-                        }
+                        wrapper.read(Type.OPTIONAL_STRING); // Optional signature
                     }
                 });
             }
@@ -370,5 +368,10 @@ public final class Protocol1_18_2To1_19 extends BackwardsProtocol<ClientboundPac
     @Override
     public BlockItemPackets1_19 getItemRewriter() {
         return blockItemPackets;
+    }
+
+    @Override
+    public TagRewriter<ClientboundPackets1_19> getTagRewriter() {
+        return tagRewriter;
     }
 }

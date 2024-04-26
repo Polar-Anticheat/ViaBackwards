@@ -30,9 +30,11 @@ import com.viaversion.viabackwards.protocol.protocol1_19_1to1_19_3.storage.Nonce
 import com.viaversion.viabackwards.protocol.protocol1_19to1_19_1.Protocol1_19To1_19_1;
 import com.viaversion.viaversion.api.Via;
 import com.viaversion.viaversion.api.connection.UserConnection;
+import com.viaversion.viaversion.api.minecraft.Holder;
 import com.viaversion.viaversion.api.minecraft.PlayerMessageSignature;
 import com.viaversion.viaversion.api.minecraft.ProfileKey;
 import com.viaversion.viaversion.api.minecraft.RegistryType;
+import com.viaversion.viaversion.api.minecraft.SoundEvent;
 import com.viaversion.viaversion.api.minecraft.entities.EntityTypes1_19_3;
 import com.viaversion.viaversion.api.minecraft.signature.SignableCommandArgumentsProvider;
 import com.viaversion.viaversion.api.minecraft.signature.model.MessageMetadata;
@@ -70,6 +72,7 @@ public final class Protocol1_19_1To1_19_3 extends BackwardsProtocol<ClientboundP
     private final EntityPackets1_19_3 entityRewriter = new EntityPackets1_19_3(this);
     private final BlockItemPackets1_19_3 itemRewriter = new BlockItemPackets1_19_3(this);
     private final TranslatableRewriter<ClientboundPackets1_19_3> translatableRewriter = new TranslatableRewriter<>(this, ComponentRewriter.ReadType.JSON);
+    private final TagRewriter<ClientboundPackets1_19_3> tagRewriter = new TagRewriter<>(this);
 
     public Protocol1_19_1To1_19_3() {
         super(ClientboundPackets1_19_3.class, ClientboundPackets1_19_1.class, ServerboundPackets1_19_3.class, ServerboundPackets1_19_1.class);
@@ -114,7 +117,6 @@ public final class Protocol1_19_1To1_19_3 extends BackwardsProtocol<ClientboundP
             wrapper.write(Type.VAR_INT, mappedId);
         });
 
-        final TagRewriter<ClientboundPackets1_19_3> tagRewriter = new TagRewriter<>(this);
         tagRewriter.addEmptyTag(RegistryType.BLOCK, "minecraft:non_flammable_wood");
         tagRewriter.addEmptyTag(RegistryType.ITEM, "minecraft:overworld_natural_logs");
         tagRewriter.registerGeneric(ClientboundPackets1_19_3.TAGS);
@@ -307,7 +309,7 @@ public final class Protocol1_19_1To1_19_3 extends BackwardsProtocol<ClientboundP
 
                     final JsonElement unsignedContent = wrapper.read(Type.OPTIONAL_COMPONENT);
                     final JsonElement content = unsignedContent != null ? unsignedContent : ComponentUtil.plainToJson(plainContent);
-                    translatableRewriter.processText(content);
+                    translatableRewriter.processText(wrapper.user(), content);
                     final int filterMaskType = wrapper.read(Type.VAR_INT);
                     if (filterMaskType == 2) {
                         wrapper.read(Type.LONG_ARRAY_PRIMITIVE); // Mask
@@ -329,7 +331,7 @@ public final class Protocol1_19_1To1_19_3 extends BackwardsProtocol<ClientboundP
         });
         registerClientbound(ClientboundPackets1_19_3.DISGUISED_CHAT, ClientboundPackets1_19_1.SYSTEM_CHAT, wrapper -> {
             final JsonElement content = wrapper.read(Type.COMPONENT);
-            translatableRewriter.processText(content);
+            translatableRewriter.processText(wrapper.user(), content);
             final int chatTypeId = wrapper.read(Type.VAR_INT);
             final JsonElement senderName = wrapper.read(Type.COMPONENT);
             final JsonElement targetName = wrapper.read(Type.OPTIONAL_COMPONENT);
@@ -349,9 +351,9 @@ public final class Protocol1_19_1To1_19_3 extends BackwardsProtocol<ClientboundP
     }
 
     private @Nullable String rewriteSound(final PacketWrapper wrapper) throws Exception {
-        final int soundId = wrapper.read(Type.VAR_INT) - 1; // Normalize the id
-        if (soundId != -1) {
-            final int mappedId = MAPPINGS.getSoundMappings().getNewId(soundId);
+        final Holder<SoundEvent> holder = wrapper.read(Type.SOUND_EVENT);
+        if (holder.hasId()) {
+            final int mappedId = MAPPINGS.getSoundMappings().getNewId(holder.id());
             if (mappedId == -1) {
                 wrapper.cancel();
                 return null;
@@ -362,8 +364,7 @@ public final class Protocol1_19_1To1_19_3 extends BackwardsProtocol<ClientboundP
         }
 
         // Convert the resource location to the corresponding integer id
-        final String soundIdentifier = wrapper.read(Type.STRING);
-        wrapper.read(Type.OPTIONAL_FLOAT); // Fixed range
+        final String soundIdentifier = holder.value().identifier();
         final String mappedIdentifier = MAPPINGS.getMappedNamedSound(soundIdentifier);
         if (mappedIdentifier == null) {
             return soundIdentifier;
@@ -402,5 +403,10 @@ public final class Protocol1_19_1To1_19_3 extends BackwardsProtocol<ClientboundP
     @Override
     public EntityPackets1_19_3 getEntityRewriter() {
         return entityRewriter;
+    }
+
+    @Override
+    public TagRewriter<ClientboundPackets1_19_3> getTagRewriter() {
+        return tagRewriter;
     }
 }

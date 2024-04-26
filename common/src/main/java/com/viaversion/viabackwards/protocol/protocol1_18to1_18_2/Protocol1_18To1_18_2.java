@@ -27,9 +27,9 @@ import com.viaversion.viaversion.api.type.Type;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.CompoundTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.ListTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.StringTag;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.Tag;
 import com.viaversion.viaversion.protocols.protocol1_17to1_16_4.ServerboundPackets1_17;
 import com.viaversion.viaversion.protocols.protocol1_18to1_17_1.ClientboundPackets1_18;
+import com.viaversion.viaversion.util.TagUtil;
 
 public final class Protocol1_18To1_18_2 extends BackwardsProtocol<ClientboundPackets1_18, ClientboundPackets1_18, ServerboundPackets1_17, ServerboundPackets1_17> {
 
@@ -81,10 +81,9 @@ public final class Protocol1_18To1_18_2 extends BackwardsProtocol<ClientboundPac
                 map(Type.NAMED_COMPOUND_TAG); // Current dimension data
                 handler(wrapper -> {
                     final CompoundTag registry = wrapper.get(Type.NAMED_COMPOUND_TAG, 0);
-                    final CompoundTag dimensionsHolder = registry.get("minecraft:dimension_type");
-                    final ListTag dimensions = dimensionsHolder.get("value");
-                    for (final Tag dimension : dimensions) {
-                        removeTagPrefix(((CompoundTag) dimension).get("element"));
+                    final ListTag<CompoundTag> dimensions = TagUtil.getRegistryEntries(registry, "dimension_type");
+                    for (final CompoundTag dimension : dimensions) {
+                        removeTagPrefix(dimension.getCompoundTag("element"));
                     }
 
                     removeTagPrefix(wrapper.get(Type.NAMED_COMPOUND_TAG, 1));
@@ -96,10 +95,9 @@ public final class Protocol1_18To1_18_2 extends BackwardsProtocol<ClientboundPac
     }
 
     private void removeTagPrefix(CompoundTag tag) {
-        final Tag infiniburnTag = tag.get("infiniburn");
-        if (infiniburnTag instanceof StringTag) {
-            final StringTag infiniburn = (StringTag) infiniburnTag;
-            infiniburn.setValue(infiniburn.getValue().substring(1));
+        final StringTag infiniburnTag = tag.getStringTag("infiniburn");
+        if (infiniburnTag != null) {
+            infiniburnTag.setValue(infiniburnTag.getValue().substring(1));
         }
     }
 }

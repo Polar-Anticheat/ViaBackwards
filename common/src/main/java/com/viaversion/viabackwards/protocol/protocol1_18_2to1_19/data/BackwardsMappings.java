@@ -17,13 +17,12 @@
  */
 package com.viaversion.viabackwards.protocol.protocol1_18_2to1_19.data;
 
-import com.viaversion.viabackwards.api.data.VBMappingDataLoader;
+import com.viaversion.viabackwards.api.data.BackwardsMappingDataLoader;
 import com.viaversion.viaversion.libs.fastutil.ints.Int2ObjectMap;
 import com.viaversion.viaversion.libs.fastutil.ints.Int2ObjectOpenHashMap;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.CompoundTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.ListTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.NumberTag;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.Tag;
 import com.viaversion.viaversion.protocols.protocol1_19to1_18_2.Protocol1_19To1_18_2;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -39,11 +38,10 @@ public final class BackwardsMappings extends com.viaversion.viabackwards.api.dat
     protected void loadExtras(final CompoundTag data) {
         super.loadExtras(data);
 
-        final ListTag chatTypes = VBMappingDataLoader.loadNBT("chat-types-1.19.1.nbt").get("values");
-        for (final Tag chatType : chatTypes) {
-            final CompoundTag chatTypeCompound = (CompoundTag) chatType;
-            final NumberTag idTag = chatTypeCompound.get("id");
-            defaultChatTypes.put(idTag.asInt(), chatTypeCompound);
+        final ListTag<CompoundTag> chatTypes = BackwardsMappingDataLoader.INSTANCE.loadNBT("chat-types-1.19.1.nbt").getListTag("values", CompoundTag.class);
+        for (final CompoundTag chatType : chatTypes) {
+            final NumberTag idTag = chatType.getNumberTag("id");
+            defaultChatTypes.put(idTag.asInt(), chatType);
         }
     }
 

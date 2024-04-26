@@ -20,6 +20,7 @@ package com.viaversion.viabackwards.protocol.protocol1_12_2to1_13.packets;
 
 import com.google.common.primitives.Ints;
 import com.viaversion.viabackwards.ViaBackwards;
+import com.viaversion.viabackwards.api.rewriters.BackwardsItemRewriter;
 import com.viaversion.viabackwards.api.rewriters.EnchantmentRewriter;
 import com.viaversion.viabackwards.protocol.protocol1_12_2to1_13.Protocol1_12_2To1_13;
 import com.viaversion.viabackwards.protocol.protocol1_12_2to1_13.block_entity_handlers.FlowerPotHandler;
@@ -55,6 +56,7 @@ import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.Protocol1_13To1_
 import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.data.BlockIdData;
 import com.viaversion.viaversion.protocols.protocol1_13to1_12_2.data.SpawnEggRewriter;
 import com.viaversion.viaversion.util.ComponentUtil;
+import com.viaversion.viaversion.util.IdAndData;
 import com.viaversion.viaversion.util.Key;
 import com.viaversion.viaversion.util.Pair;
 import java.util.ArrayList;
@@ -64,14 +66,14 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
-public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewriters.ItemRewriter<ClientboundPackets1_13, ServerboundPackets1_12_1, Protocol1_12_2To1_13> {
+public class BlockItemPackets1_13 extends BackwardsItemRewriter<ClientboundPackets1_13, ServerboundPackets1_12_1, Protocol1_12_2To1_13> {
 
     private final Map<String, String> enchantmentMappings = new HashMap<>();
     private final String extraNbtTag;
 
     public BlockItemPackets1_13(Protocol1_12_2To1_13 protocol) {
         super(protocol, null, null);
-        extraNbtTag = "VB|" + protocol.getClass().getSimpleName() + "|2";
+        extraNbtTag = nbtTagName("2");
     }
 
     public static boolean isDamageable(int id) {
@@ -99,11 +101,11 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
             }
 
             if (SpawnEggRewriter.getEntityId(oldId).isPresent()) {
-                wrapper.write(Type.VAR_INT, 383 << 4);
+                wrapper.write(Type.VAR_INT, IdAndData.toRawData(383));
                 return;
             }
 
-            wrapper.write(Type.VAR_INT, oldId >> 4);
+            wrapper.write(Type.VAR_INT, IdAndData.getId(oldId));
         });
 
         protocol.registerClientbound(ClientboundPackets1_13.BLOCK_ACTION, new PacketHandlers() {
@@ -256,7 +258,12 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
                 map(Type.UNSIGNED_BYTE);
                 map(Type.ITEM1_13_SHORT_ARRAY, Type.ITEM1_8_SHORT_ARRAY);
 
-                handler(itemArrayToClientHandler(Type.ITEM1_8_SHORT_ARRAY));
+                handler(wrapper -> {
+                    final Item[] items = wrapper.get(Type.ITEM1_8_SHORT_ARRAY, 0);
+                    for (Item item : items) {
+                        handleItemToClient(wrapper.user(), item);
+                    }
+                });
             }
         });
 
@@ -267,7 +274,7 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
                 map(Type.SHORT);
                 map(Type.ITEM1_13, Type.ITEM1_8);
 
-                handler(itemToClientHandler(Type.ITEM1_8));
+                handler(wrapper -> handleItemToClient(wrapper.user(), wrapper.get(Type.ITEM1_8, 0)));
             }
         });
 
@@ -437,7 +444,7 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
                 map(Type.VAR_INT);
                 map(Type.ITEM1_13, Type.ITEM1_8);
 
-                handler(itemToClientHandler(Type.ITEM1_8));
+                handler(wrapper -> handleItemToClient(wrapper.user(), wrapper.get(Type.ITEM1_8, 0)));
             }
         });
 
@@ -465,7 +472,7 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
                 map(Type.SHORT);
                 map(Type.ITEM1_8, Type.ITEM1_13);
 
-                handler(itemToServerHandler(Type.ITEM1_13));
+                handler(wrapper -> handleItemToServer(wrapper.user(), wrapper.get(Type.ITEM1_13, 0)));
             }
         });
 
@@ -479,7 +486,7 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
                 map(Type.VAR_INT);
                 map(Type.ITEM1_8, Type.ITEM1_13);
 
-                handler(itemToServerHandler(Type.ITEM1_13));
+                handler(wrapper -> handleItemToServer(wrapper.user(), wrapper.get(Type.ITEM1_13, 0)));
             }
         });
     }
@@ -493,7 +500,7 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
     }
 
     @Override
-    public Item handleItemToClient(Item item) {
+    public Item handleItemToClient(UserConnection connection, Item item) {
         if (item == null) return null;
 
         // Custom mappings/super call moved down
@@ -513,7 +520,7 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
 
         if (rawId == null) {
             // Look for custom mappings
-            super.handleItemToClient(item);
+            super.handleItemToClient(connection, item);
 
             // Handle one-way special case
             if (item.identifier() == -1) {
@@ -564,7 +571,7 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
                 StringTag name = display.getStringTag("Name");
                 if (name != null) {
                     display.putString(extraNbtTag + "|Name", name.getValue());
-                    name.setValue(protocol.jsonToLegacy(name.getValue()));
+                    name.setValue(protocol.jsonToLegacy(connection, name.getValue()));
                 }
             }
 
@@ -597,10 +604,10 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
 
     private void rewriteCanPlaceToClient(CompoundTag tag, String tagName) {
         // The tag was manually created incorrectly so ignore rewriting it
-        ListTag blockTag = tag.getListTag(tagName);
+        ListTag<?> blockTag = tag.getListTag(tagName);
         if (blockTag == null) return;
 
-        ListTag newCanPlaceOn = new ListTag(StringTag.class);
+        ListTag<StringTag> newCanPlaceOn = new ListTag<>(StringTag.class);
         tag.put(extraNbtTag + "|" + tagName, blockTag.copy());
         for (Tag oldTag : blockTag) {
             Object value = oldTag.getValue();
@@ -611,7 +618,7 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
                     newCanPlaceOn.add(new StringTag(newValue));
                 }
             } else {
-                newCanPlaceOn.add(oldTag);
+                newCanPlaceOn.add(new StringTag(oldTag.getValue().toString()));
             }
         }
         tag.put(tagName, newCanPlaceOn);
@@ -620,19 +627,14 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
     //TODO un-ugly all of this
     private void rewriteEnchantmentsToClient(CompoundTag tag, boolean storedEnch) {
         String key = storedEnch ? "StoredEnchantments" : "Enchantments";
-        ListTag enchantments = tag.getListTag(key);
+        ListTag<CompoundTag> enchantments = tag.getListTag(key, CompoundTag.class);
         if (enchantments == null) return;
 
-        ListTag noMapped = new ListTag(CompoundTag.class);
-        ListTag newEnchantments = new ListTag(CompoundTag.class);
-        List<Tag> lore = new ArrayList<>();
+        ListTag<CompoundTag> noMapped = new ListTag<>(CompoundTag.class);
+        ListTag<CompoundTag> newEnchantments = new ListTag<>(CompoundTag.class);
+        List<StringTag> lore = new ArrayList<>();
         boolean hasValidEnchants = false;
-        for (Tag enchantmentEntryTag : enchantments.copy()) {
-            if (!(enchantmentEntryTag instanceof CompoundTag)) {
-                continue;
-            }
-
-            CompoundTag enchantmentEntry = (CompoundTag) enchantmentEntryTag;
+        for (CompoundTag enchantmentEntry : enchantments.copy()) {
             StringTag idTag = enchantmentEntry.getStringTag("id");
             if (idTag == null) {
                 continue;
@@ -720,13 +722,13 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
                     tag.put("display", display = new CompoundTag());
                 }
 
-                ListTag loreTag = display.getListTag("Lore");
+                ListTag<StringTag> loreTag = display.getListTag("Lore", StringTag.class);
                 if (loreTag == null) {
-                    display.put("Lore", loreTag = new ListTag(StringTag.class));
+                    display.put("Lore", loreTag = new ListTag<>(StringTag.class));
                     tag.put(extraNbtTag + "|DummyLore", new ByteTag());
                 } else if (!loreTag.isEmpty()) {
-                    ListTag oldLore = new ListTag(StringTag.class);
-                    for (Tag value : loreTag) {
+                    ListTag<StringTag> oldLore = new ListTag<>(StringTag.class);
+                    for (StringTag value : loreTag) {
                         oldLore.add(value.copy());
                     }
                     tag.put(extraNbtTag + "|OldLore", oldLore);
@@ -743,14 +745,14 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
     }
 
     @Override
-    public Item handleItemToServer(Item item) {
+    public Item handleItemToServer(UserConnection connection, Item item) {
         if (item == null) return null;
         CompoundTag tag = item.tag();
 
         // Save original id
         int originalId = (item.identifier() << 16 | item.data() & 0xFFFF);
 
-        int rawId = (item.identifier() << 4 | item.data() & 0xF);
+        int rawId = IdAndData.toRawData(item.identifier(), item.data());
 
         // NBT Additions
         if (isDamageable(item.identifier())) {
@@ -811,7 +813,7 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
         // Handle custom mappings
         int identifier = item.identifier();
         item.setIdentifier(rawId);
-        super.handleItemToServer(item);
+        super.handleItemToServer(connection, item);
 
         // Mapped with original data, we can return here
         if (item.identifier() != rawId && item.identifier() != -1) return item;
@@ -831,7 +833,7 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
             if (item.identifier() == 229) { // purple shulker box
                 newId = 362; // directly set the new id -> base/colorless shulker box
             } else if (item.identifier() == 31 && item.data() == 0) { // Shrub was removed
-                rawId = 32 << 4; // Dead Bush
+                rawId = IdAndData.toRawData(32); // Dead Bush
             } else if (protocol.getMappingData().getItemMappings().inverse().getNewId(rawId & ~0xF) != -1) {
                 rawId &= ~0xF; // Remove data
             } else {
@@ -854,11 +856,11 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
     private void rewriteCanPlaceToServer(CompoundTag tag, String tagName) {
         if (tag.getListTag(tagName) == null) return;
 
-        ListTag blockTag = tag.remove(extraNbtTag + "|" + tagName);
+        ListTag<?> blockTag = tag.remove(extraNbtTag + "|" + tagName);
         if (blockTag != null) {
             tag.put(tagName, blockTag.copy());
         } else if ((blockTag = tag.getListTag(tagName)) != null) {
-            ListTag newCanPlaceOn = new ListTag(StringTag.class);
+            ListTag<StringTag> newCanPlaceOn = new ListTag<>(StringTag.class);
             for (Tag oldTag : blockTag) {
                 Object value = oldTag.getValue();
                 String oldId = Key.stripMinecraftNamespace(value.toString());
@@ -884,10 +886,10 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
 
     private void rewriteEnchantmentsToServer(CompoundTag tag, boolean storedEnch) {
         String key = storedEnch ? "StoredEnchantments" : "Enchantments";
-        ListTag enchantments = tag.getListTag(storedEnch ? key : "ench");
+        ListTag<CompoundTag> enchantments = tag.getListTag(storedEnch ? key : "ench", CompoundTag.class);
         if (enchantments == null) return;
 
-        ListTag newEnchantments = new ListTag(CompoundTag.class);
+        ListTag<CompoundTag> newEnchantments = new ListTag<>(CompoundTag.class);
         boolean dummyEnchant = false;
         if (!storedEnch) {
             Tag hideFlags = tag.remove(extraNbtTag + "|OldHideFlags");
@@ -900,12 +902,7 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
             }
         }
 
-        for (Tag enchEntry : enchantments) {
-            if (!(enchEntry instanceof CompoundTag)) {
-                continue;
-            }
-
-            CompoundTag entryTag = (CompoundTag) enchEntry;
+        for (CompoundTag entryTag : enchantments) {
             NumberTag idTag = entryTag.getNumberTag("id");
             NumberTag levelTag = entryTag.getNumberTag("lvl");
             CompoundTag enchantmentEntry = new CompoundTag();
@@ -925,11 +922,12 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
             newEnchantments.add(enchantmentEntry);
         }
 
-        Tag noMapped = tag.remove(extraNbtTag + "|Enchantments");
-        if (noMapped instanceof ListTag) {
-            for (Tag value : ((ListTag) noMapped)) {
+        ListTag<CompoundTag> noMapped = tag.getListTag(extraNbtTag + "|Enchantments", CompoundTag.class);
+        if (noMapped != null) {
+            for (CompoundTag value : noMapped) {
                 newEnchantments.add(value);
             }
+            tag.remove(extraNbtTag + "|Enchantments");
         }
 
         CompoundTag display = tag.getCompoundTag("display");
@@ -937,14 +935,15 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
             tag.put("display", display = new CompoundTag());
         }
 
-        Tag oldLore = tag.remove(extraNbtTag + "|OldLore");
-        if (oldLore instanceof ListTag) {
-            ListTag lore = display.getListTag("Lore");
+        ListTag<StringTag> oldLore = tag.getListTag(extraNbtTag + "|OldLore", StringTag.class);
+        if (oldLore != null) {
+            ListTag<StringTag> lore = display.getListTag("Lore", StringTag.class);
             if (lore == null) {
-                tag.put("Lore", lore = new ListTag());
+                tag.put("Lore", lore = new ListTag<>(StringTag.class));
             }
 
-            lore.setValue(((ListTag) oldLore).getValue());
+            lore.setValue(oldLore.getValue());
+            tag.remove(extraNbtTag + "|OldLore");
         } else if (tag.remove(extraNbtTag + "|DummyLore") != null) {
             display.remove("Lore");
             if (display.isEmpty()) {
@@ -969,14 +968,11 @@ public class BlockItemPackets1_13 extends com.viaversion.viabackwards.api.rewrit
             blockEntityTag.putInt("Base", 15 - base.asInt()); // Invert color id
         }
 
-        ListTag patterns = blockEntityTag.getListTag("Patterns");
+        ListTag<CompoundTag> patterns = blockEntityTag.getListTag("Patterns", CompoundTag.class);
         if (patterns != null) {
-            for (Tag pattern : patterns) {
-                if (!(pattern instanceof CompoundTag)) continue;
-
-                CompoundTag patternTag = (CompoundTag) pattern;
-                NumberTag colorTag = patternTag.getNumberTag("Color");
-                patternTag.putInt("Color", 15 - colorTag.asInt()); // Invert color id
+            for (CompoundTag pattern : patterns) {
+                NumberTag colorTag = pattern.getNumberTag("Color");
+                pattern.putInt("Color", 15 - colorTag.asInt()); // Invert color id
             }
         }
     }

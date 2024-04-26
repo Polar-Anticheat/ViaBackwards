@@ -22,8 +22,8 @@ import com.viaversion.viaversion.libs.opennbt.tag.builtin.CompoundTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.ListTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.NumberTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.StringTag;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.Tag;
 import com.viaversion.viaversion.util.ComponentUtil;
+import com.viaversion.viaversion.util.Key;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -35,21 +35,21 @@ import java.util.Map;
  */
 public class EnchantmentRewriter {
 
-    private final Map<String, String> enchantmentMappings = new HashMap<>();
-    private final ItemRewriter<?, ?, ?> itemRewriter;
+    protected final Map<String, String> enchantmentMappings = new HashMap<>();
+    protected final BackwardsItemRewriter<?, ?, ?> itemRewriter;
     private final boolean jsonFormat;
 
-    public EnchantmentRewriter(ItemRewriter<?, ?, ?> itemRewriter, boolean jsonFormat) {
+    public EnchantmentRewriter(BackwardsItemRewriter<?, ?, ?> itemRewriter, boolean jsonFormat) {
         this.itemRewriter = itemRewriter;
         this.jsonFormat = jsonFormat;
     }
 
-    public EnchantmentRewriter(ItemRewriter<?, ?, ?> itemRewriter) {
+    public EnchantmentRewriter(BackwardsItemRewriter<?, ?, ?> itemRewriter) {
         this(itemRewriter, true);
     }
 
     public void registerEnchantment(String key, String replacementLore) {
-        enchantmentMappings.put(key, replacementLore);
+        enchantmentMappings.put(Key.stripMinecraftNamespace(key), replacementLore);
     }
 
     public void handleToClient(Item item) {
@@ -68,26 +68,29 @@ public class EnchantmentRewriter {
         CompoundTag tag = item.tag();
         if (tag == null) return;
 
-        if (tag.contains(itemRewriter.getNbtTagName() + "|Enchantments")) {
+        if (tag.contains(itemRewriter.nbtTagName("Enchantments"))) {
             rewriteEnchantmentsToServer(tag, false);
         }
-        if (tag.contains(itemRewriter.getNbtTagName() + "|StoredEnchantments")) {
+        if (tag.contains(itemRewriter.nbtTagName("StoredEnchantments"))) {
             rewriteEnchantmentsToServer(tag, true);
         }
     }
 
     public void rewriteEnchantmentsToClient(CompoundTag tag, boolean storedEnchant) {
         String key = storedEnchant ? "StoredEnchantments" : "Enchantments";
-        ListTag enchantments = tag.getListTag(key);
-        List<Tag> loreToAdd = new ArrayList<>();
+        ListTag<CompoundTag> enchantments = tag.getListTag(key, CompoundTag.class);
+        List<StringTag> loreToAdd = new ArrayList<>();
         boolean changed = false;
 
-        Iterator<Tag> iterator = enchantments.iterator();
+        Iterator<CompoundTag> iterator = enchantments.iterator();
         while (iterator.hasNext()) {
-            CompoundTag enchantmentEntry = (CompoundTag) iterator.next();
+            CompoundTag enchantmentEntry = iterator.next();
             StringTag idTag = enchantmentEntry.getStringTag("id");
+            if (idTag == null) {
+                continue;
+            }
 
-            String enchantmentId = idTag.getValue();
+            String enchantmentId = Key.stripMinecraftNamespace(idTag.getValue());
             String remappedName = enchantmentMappings.get(enchantmentId);
             if (remappedName != null) {
                 if (!changed) {
@@ -123,9 +126,9 @@ public class EnchantmentRewriter {
                 tag.put("display", display = new CompoundTag());
             }
 
-            ListTag loreTag = display.getListTag("Lore");
+            ListTag<StringTag> loreTag = display.getListTag("Lore", StringTag.class);
             if (loreTag == null) {
-                display.put("Lore", loreTag = new ListTag(StringTag.class));
+                display.put("Lore", loreTag = new ListTag<>(StringTag.class));
             } else {
                 // Save original lore
                 itemRewriter.saveListTag(display, loreTag, "Lore");

@@ -37,9 +37,10 @@ import com.viaversion.viaversion.libs.opennbt.tag.builtin.CompoundTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.ListTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.NumberTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.StringTag;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.Tag;
 import com.viaversion.viaversion.protocols.protocol1_18to1_17_1.ClientboundPackets1_18;
 import com.viaversion.viaversion.protocols.protocol1_19to1_18_2.ClientboundPackets1_19;
+import com.viaversion.viaversion.util.Key;
+import com.viaversion.viaversion.util.TagUtil;
 
 public final class EntityPackets1_19 extends EntityRewriter<ClientboundPackets1_19, Protocol1_18_2To1_19> {
 
@@ -129,17 +130,16 @@ public final class EntityPackets1_19 extends EntityRewriter<ClientboundPackets1_
                     dimensionRegistryStorage.clear();
 
                     // Cache dimensions and find current dimension
-                    final String dimensionKey = wrapper.read(Type.STRING);
+                    final String dimensionKey = Key.stripMinecraftNamespace(wrapper.read(Type.STRING));
                     final CompoundTag registry = wrapper.get(Type.NAMED_COMPOUND_TAG, 0);
-                    final ListTag dimensions = ((CompoundTag) registry.get("minecraft:dimension_type")).get("value");
+                    final ListTag<CompoundTag> dimensions = TagUtil.getRegistryEntries(registry, "dimension_type");
                     boolean found = false;
-                    for (final Tag dimension : dimensions) {
-                        final CompoundTag dimensionCompound = (CompoundTag) dimension;
-                        final StringTag nameTag = dimensionCompound.get("name");
-                        final CompoundTag dimensionData = dimensionCompound.get("element");
+                    for (final CompoundTag dimension : dimensions) {
+                        final StringTag nameTag = dimension.getStringTag("name");
+                        final CompoundTag dimensionData = dimension.getCompoundTag("element");
                         dimensionRegistryStorage.addDimension(nameTag.getValue(), dimensionData.copy());
 
-                        if (!found && nameTag.getValue().equals(dimensionKey)) {
+                        if (!found && Key.stripMinecraftNamespace(nameTag.getValue()).equals(dimensionKey)) {
                             wrapper.write(Type.NAMED_COMPOUND_TAG, dimensionData);
                             found = true;
                         }
@@ -149,20 +149,23 @@ public final class EntityPackets1_19 extends EntityRewriter<ClientboundPackets1_
                     }
 
                     // Add biome category and track biomes
-                    final CompoundTag biomeRegistry = registry.get("minecraft:worldgen/biome");
-                    final ListTag biomes = biomeRegistry.get("value");
-                    for (final Tag biome : biomes.getValue()) {
-                        final CompoundTag biomeCompound = ((CompoundTag) biome).get("element");
+                    final ListTag<CompoundTag> biomes = TagUtil.getRegistryEntries(registry, "worldgen/biome");
+                    for (final CompoundTag biome : biomes) {
+                        final CompoundTag biomeCompound = biome.getCompoundTag("element");
                         biomeCompound.putString("category", "none");
                     }
                     tracker(wrapper.user()).setBiomesSent(biomes.size());
 
                     // Cache and remove chat types
-                    final ListTag chatTypes = ((CompoundTag) registry.remove("minecraft:chat_type")).get("value");
-                    for (final Tag chatType : chatTypes) {
-                        final CompoundTag chatTypeCompound = (CompoundTag) chatType;
-                        final NumberTag idTag = chatTypeCompound.get("id");
-                        dimensionRegistryStorage.addChatType(idTag.asInt(), chatTypeCompound);
+                    CompoundTag chatTypeRegistry = (CompoundTag) registry.remove("minecraft:chat_type");
+                    if (chatTypeRegistry == null) {
+                        chatTypeRegistry = (CompoundTag) registry.remove("chat_type");
+                    }
+
+                    final ListTag<CompoundTag> chatTypes = chatTypeRegistry.getListTag("value", CompoundTag.class);
+                    for (final CompoundTag chatType : chatTypes) {
+                        final NumberTag idTag = chatType.getNumberTag("id");
+                        dimensionRegistryStorage.addChatType(idTag.asInt(), chatType);
                     }
                 });
                 map(Type.STRING); // World
@@ -245,21 +248,21 @@ public final class EntityPackets1_19 extends EntityRewriter<ClientboundPackets1_
             if (type == Types1_18.META_TYPES.particleType) {
                 final Particle particle = (Particle) meta.getValue();
                 final ParticleMappings particleMappings = protocol.getMappingData().getParticleMappings();
-                if (particle.getId() == particleMappings.id("sculk_charge")) {
+                if (particle.id() == particleMappings.id("sculk_charge")) {
                     //TODO
                     event.cancel();
                     return;
-                } else if (particle.getId() == particleMappings.id("shriek")) {
+                } else if (particle.id() == particleMappings.id("shriek")) {
                     //TODO
                     event.cancel();
                     return;
-                } else if (particle.getId() == particleMappings.id("vibration")) {
+                } else if (particle.id() == particleMappings.id("vibration")) {
                     // Can't do without the position
                     event.cancel();
                     return;
                 }
 
-                rewriteParticle(particle);
+                rewriteParticle(event.user(), particle);
             } else if (type == Types1_18.META_TYPES.poseType) {
                 final int pose = meta.value();
                 if (pose >= 8) {

@@ -52,6 +52,7 @@ import com.viaversion.viabackwards.protocol.protocol1_19_3to1_19_4.Protocol1_19_
 import com.viaversion.viabackwards.protocol.protocol1_19_4to1_20.Protocol1_19_4To1_20;
 import com.viaversion.viabackwards.protocol.protocol1_19to1_19_1.Protocol1_19To1_19_1;
 import com.viaversion.viabackwards.protocol.protocol1_20_2to1_20_3.Protocol1_20_2To1_20_3;
+import com.viaversion.viabackwards.protocol.protocol1_20_3to1_20_5.Protocol1_20_3To1_20_5;
 import com.viaversion.viabackwards.protocol.protocol1_20to1_20_2.Protocol1_20To1_20_2;
 import com.viaversion.viabackwards.protocol.protocol1_9_1_2to1_9_3_4.Protocol1_9_1_2To1_9_3_4;
 import com.viaversion.viabackwards.protocol.protocol1_9_4to1_10.Protocol1_9_4To1_10;
@@ -67,7 +68,7 @@ import java.util.logging.Logger;
 
 public interface ViaBackwardsPlatform {
 
-    String MINIMUM_VV_VERSION = "4.9.3";
+    String MINIMUM_VV_VERSION = "4.10.0";
 
     /**
      * Initialize ViaBackwards.
@@ -92,7 +93,7 @@ public interface ViaBackwardsPlatform {
         getLogger().info("Registering protocols...");
         final ProtocolManager protocolManager = Via.getManager().getProtocolManager();
         protocolManager.registerProtocol(new Protocol1_9To1_9_1(), ProtocolVersion.v1_9, ProtocolVersion.v1_9_1);
-        protocolManager.registerProtocol(new Protocol1_9_1_2To1_9_3_4(), Arrays.asList(ProtocolVersion.v1_9_1.getVersion(), ProtocolVersion.v1_9_2.getVersion()), ProtocolVersion.v1_9_3.getVersion());
+        protocolManager.registerProtocol(new Protocol1_9_1_2To1_9_3_4(), Arrays.asList(ProtocolVersion.v1_9_1, ProtocolVersion.v1_9_2), ProtocolVersion.v1_9_3);
         protocolManager.registerProtocol(new Protocol1_9_4To1_10(), ProtocolVersion.v1_9_3, ProtocolVersion.v1_10);
 
         protocolManager.registerProtocol(new Protocol1_10To1_11(), ProtocolVersion.v1_10, ProtocolVersion.v1_11);
@@ -136,6 +137,7 @@ public interface ViaBackwardsPlatform {
         protocolManager.registerProtocol(new Protocol1_19_4To1_20(), ProtocolVersion.v1_19_4, ProtocolVersion.v1_20);
         protocolManager.registerProtocol(new Protocol1_20To1_20_2(), ProtocolVersion.v1_20, ProtocolVersion.v1_20_2);
         protocolManager.registerProtocol(new Protocol1_20_2To1_20_3(), ProtocolVersion.v1_20_2, ProtocolVersion.v1_20_3);
+        protocolManager.registerProtocol(new Protocol1_20_3To1_20_5(), ProtocolVersion.v1_20_3, ProtocolVersion.v1_20_5);
     }
 
     /**
@@ -149,7 +151,7 @@ public interface ViaBackwardsPlatform {
         String vvVersion = Via.getPlatform().getPluginVersion();
         if (vvVersion != null && new Version(vvVersion).compareTo(new Version(MINIMUM_VV_VERSION + "--")) < 0) {
             getLogger().severe("================================");
-            getLogger().severe("YOUR VIAVERSION IS OUTDATED");
+            getLogger().severe("YOUR VIAVERSION IS OUTDATED (you are running " + vvVersion + ")");
             getLogger().severe("PLEASE USE VIAVERSION " + MINIMUM_VV_VERSION + " OR NEWER");
             getLogger().severe("LINK: https://ci.viaversion.com/");
             getLogger().severe("VIABACKWARDS WILL NOW DISABLE");

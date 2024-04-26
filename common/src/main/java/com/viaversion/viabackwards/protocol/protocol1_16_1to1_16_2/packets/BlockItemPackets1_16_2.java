@@ -17,6 +17,7 @@
  */
 package com.viaversion.viabackwards.protocol.protocol1_16_1to1_16_2.packets;
 
+import com.viaversion.viabackwards.api.rewriters.BackwardsItemRewriter;
 import com.viaversion.viabackwards.protocol.protocol1_16_1to1_16_2.Protocol1_16_1To1_16_2;
 import com.viaversion.viaversion.api.minecraft.BlockChangeRecord;
 import com.viaversion.viaversion.api.minecraft.BlockChangeRecord1_8;
@@ -37,7 +38,7 @@ import com.viaversion.viaversion.protocols.protocol1_16to1_15_2.ServerboundPacke
 import com.viaversion.viaversion.rewriter.BlockRewriter;
 import com.viaversion.viaversion.rewriter.RecipeRewriter;
 
-public class BlockItemPackets1_16_2 extends com.viaversion.viabackwards.api.rewriters.ItemRewriter<ClientboundPackets1_16_2, ServerboundPackets1_16, Protocol1_16_1To1_16_2> {
+public class BlockItemPackets1_16_2 extends BackwardsItemRewriter<ClientboundPackets1_16_2, ServerboundPackets1_16, Protocol1_16_1To1_16_2> {
 
     public BlockItemPackets1_16_2(Protocol1_16_1To1_16_2 protocol) {
         super(protocol, Type.ITEM1_13_2, Type.ITEM1_13_2_SHORT_ARRAY);
@@ -133,7 +134,7 @@ public class BlockItemPackets1_16_2 extends com.viaversion.viabackwards.api.rewr
 
         registerClickWindow(ServerboundPackets1_16.CLICK_WINDOW);
         registerCreativeInvAction(ServerboundPackets1_16.CREATIVE_INVENTORY_ACTION);
-        protocol.registerServerbound(ServerboundPackets1_16.EDIT_BOOK, wrapper -> handleItemToServer(wrapper.passthrough(Type.ITEM1_13_2)));
+        protocol.registerServerbound(ServerboundPackets1_16.EDIT_BOOK, wrapper -> handleItemToServer(wrapper.user(), wrapper.passthrough(Type.ITEM1_13_2)));
     }
 
     private void handleBlockEntity(CompoundTag tag) {
@@ -149,7 +150,7 @@ public class BlockItemPackets1_16_2 extends com.viaversion.viabackwards.api.rewr
             CompoundTag properties = skullOwnerTag.getCompoundTag("Properties");
             if (properties == null) return;
 
-            ListTag textures = properties.getListTag("textures");
+            ListTag<CompoundTag> textures = properties.getListTag("textures", CompoundTag.class);
             if (textures == null) return;
 
             CompoundTag first = !textures.isEmpty() ? textures.get(0) : null;

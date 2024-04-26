@@ -33,11 +33,14 @@ import com.viaversion.viaversion.protocols.protocol1_9_3to1_9_1_2.ServerboundPac
 public class BlockItemPackets1_10 extends LegacyBlockItemRewriter<ClientboundPackets1_9_3, ServerboundPackets1_9_3, Protocol1_9_4To1_10> {
 
     public BlockItemPackets1_10(Protocol1_9_4To1_10 protocol) {
-        super(protocol);
+        super(protocol, "1.10");
     }
 
     @Override
     protected void registerPackets() {
+        registerBlockChange(ClientboundPackets1_9_3.BLOCK_CHANGE);
+        registerMultiBlockChange(ClientboundPackets1_9_3.MULTI_BLOCK_CHANGE);
+
         registerSetSlot(ClientboundPackets1_9_3.SET_SLOT);
         registerWindowItems(ClientboundPackets1_9_3.WINDOW_ITEMS);
 
@@ -54,12 +57,12 @@ public class BlockItemPackets1_10 extends LegacyBlockItemRewriter<ClientboundPac
 
                         int size = wrapper.passthrough(Type.UNSIGNED_BYTE);
                         for (int i = 0; i < size; i++) {
-                            wrapper.write(Type.ITEM1_8, handleItemToClient(wrapper.read(Type.ITEM1_8))); // Input Item
-                            wrapper.write(Type.ITEM1_8, handleItemToClient(wrapper.read(Type.ITEM1_8))); // Output Item
+                            wrapper.write(Type.ITEM1_8, handleItemToClient(wrapper.user(), wrapper.read(Type.ITEM1_8))); // Input Item
+                            wrapper.write(Type.ITEM1_8, handleItemToClient(wrapper.user(), wrapper.read(Type.ITEM1_8))); // Output Item
 
                             boolean secondItem = wrapper.passthrough(Type.BOOLEAN); // Has second item
                             if (secondItem) {
-                                wrapper.write(Type.ITEM1_8, handleItemToClient(wrapper.read(Type.ITEM1_8))); // Second Item
+                                wrapper.write(Type.ITEM1_8, handleItemToClient(wrapper.user(), wrapper.read(Type.ITEM1_8))); // Second Item
                             }
 
                             wrapper.passthrough(Type.BOOLEAN); // Trade disabled
@@ -83,40 +86,10 @@ public class BlockItemPackets1_10 extends LegacyBlockItemRewriter<ClientboundPac
             handleChunk(chunk);
         });
 
-        // Block Change Packet
-        protocol.registerClientbound(ClientboundPackets1_9_3.BLOCK_CHANGE, new PacketHandlers() {
-            @Override
-            public void register() {
-                map(Type.POSITION1_8); // 0 - Block Position
-                map(Type.VAR_INT); // 1 - Block
-
-                handler(wrapper -> {
-                    int idx = wrapper.get(Type.VAR_INT, 0);
-                    wrapper.set(Type.VAR_INT, 0, handleBlockID(idx));
-                });
-            }
-        });
-
-        // Multi Block Change Packet
-        protocol.registerClientbound(ClientboundPackets1_9_3.MULTI_BLOCK_CHANGE, new PacketHandlers() {
-            @Override
-            public void register() {
-                map(Type.INT); // 0 - Chunk X
-                map(Type.INT); // 1 - Chunk Z
-                map(Type.BLOCK_CHANGE_RECORD_ARRAY);
-
-                handler(wrapper -> {
-                    for (BlockChangeRecord record : wrapper.get(Type.BLOCK_CHANGE_RECORD_ARRAY, 0)) {
-                        record.setBlockId(handleBlockID(record.getBlockId()));
-                    }
-                });
-            }
-        });
-
         // Rewrite metadata items
         protocol.getEntityRewriter().filter().handler((event, meta) -> {
             if (meta.metaType().type().equals(Type.ITEM1_8)) // Is Item
-                meta.setValue(handleItemToClient((Item) meta.getValue()));
+                meta.setValue(handleItemToClient(event.user(), (Item) meta.getValue()));
         });
 
         // Particle

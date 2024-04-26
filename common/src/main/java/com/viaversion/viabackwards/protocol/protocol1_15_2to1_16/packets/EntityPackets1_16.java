@@ -48,6 +48,7 @@ public class EntityPackets1_16 extends EntityRewriter<ClientboundPackets1_16, Pr
     private final ValueTransformer<String, Integer> dimensionTransformer = new ValueTransformer<String, Integer>(Type.STRING, Type.INT) {
         @Override
         public Integer transform(PacketWrapper wrapper, String input) {
+            input = Key.namespaced(input);
             switch (input) {
                 case "minecraft:the_nether":
                     return -1;
@@ -119,7 +120,7 @@ public class EntityPackets1_16 extends EntityRewriter<ClientboundPackets1_16, Pr
                     // Send a dummy respawn with a different dimension if the world name was different and the same dimension was used
                     if (clientWorld.getEnvironment() != null && dimension == clientWorld.getEnvironment().id()
                         && (wrapper.user().isClientSide() || Via.getPlatform().isProxy()
-                        || wrapper.user().getProtocolInfo().getProtocolVersion() <= ProtocolVersion.v1_12_2.getVersion() // Hotfix for https://github.com/ViaVersion/ViaBackwards/issues/381
+                        || wrapper.user().getProtocolInfo().protocolVersion().olderThanOrEqualTo(ProtocolVersion.v1_12_2) // Hotfix for https://github.com/ViaVersion/ViaBackwards/issues/381
                         || !nextWorldName.equals(worldNameTracker.getWorldName()))) {
                         PacketWrapper packet = wrapper.create(ClientboundPackets1_15.RESPAWN);
                         packet.write(Type.INT, dimension == 0 ? -1 : 0);
@@ -190,7 +191,7 @@ public class EntityPackets1_16 extends EntityRewriter<ClientboundPackets1_16, Pr
             int size = wrapper.passthrough(Type.INT);
             for (int i = 0; i < size; i++) {
                 String attributeIdentifier = wrapper.read(Type.STRING);
-                String oldKey = protocol.getMappingData().getAttributeMappings().get(attributeIdentifier);
+                String oldKey = protocol.getMappingData().attributeIdentifierMappings().get(attributeIdentifier);
                 wrapper.write(Type.STRING, oldKey != null ? oldKey : Key.stripMinecraftNamespace(attributeIdentifier));
 
                 wrapper.passthrough(Type.DOUBLE);
@@ -203,36 +204,31 @@ public class EntityPackets1_16 extends EntityRewriter<ClientboundPackets1_16, Pr
             }
         });
 
-        protocol.registerClientbound(ClientboundPackets1_16.PLAYER_INFO, new PacketHandlers() {
-            @Override
-            public void register() {
-                handler(packetWrapper -> {
-                    int action = packetWrapper.passthrough(Type.VAR_INT);
-                    int playerCount = packetWrapper.passthrough(Type.VAR_INT);
-                    for (int i = 0; i < playerCount; i++) {
-                        packetWrapper.passthrough(Type.UUID);
-                        if (action == 0) { // Add
-                            packetWrapper.passthrough(Type.STRING);
-                            int properties = packetWrapper.passthrough(Type.VAR_INT);
-                            for (int j = 0; j < properties; j++) {
-                                packetWrapper.passthrough(Type.STRING);
-                                packetWrapper.passthrough(Type.STRING);
-                                packetWrapper.passthrough(Type.OPTIONAL_STRING);
-                            }
-                            packetWrapper.passthrough(Type.VAR_INT);
-                            packetWrapper.passthrough(Type.VAR_INT);
-                            // Display Name
-                            protocol.getTranslatableRewriter().processText(packetWrapper.passthrough(Type.OPTIONAL_COMPONENT));
-                        } else if (action == 1) { // Update Game Mode
-                            packetWrapper.passthrough(Type.VAR_INT);
-                        } else if (action == 2) { // Update Ping
-                            packetWrapper.passthrough(Type.VAR_INT);
-                        } else if (action == 3) { // Update Display Name
-                            // Display name
-                            protocol.getTranslatableRewriter().processText(packetWrapper.passthrough(Type.OPTIONAL_COMPONENT));
-                        } // 4 = Remove Player
+        protocol.registerClientbound(ClientboundPackets1_16.PLAYER_INFO, wrapper -> {
+            int action = wrapper.passthrough(Type.VAR_INT);
+            int playerCount = wrapper.passthrough(Type.VAR_INT);
+            for (int i = 0; i < playerCount; i++) {
+                wrapper.passthrough(Type.UUID);
+                if (action == 0) { // Add
+                    wrapper.passthrough(Type.STRING);
+                    int properties = wrapper.passthrough(Type.VAR_INT);
+                    for (int j = 0; j < properties; j++) {
+                        wrapper.passthrough(Type.STRING);
+                        wrapper.passthrough(Type.STRING);
+                        wrapper.passthrough(Type.OPTIONAL_STRING);
                     }
-                });
+                    wrapper.passthrough(Type.VAR_INT);
+                    wrapper.passthrough(Type.VAR_INT);
+                    // Display Name
+                    protocol.getTranslatableRewriter().processText(wrapper.user(), wrapper.passthrough(Type.OPTIONAL_COMPONENT));
+                } else if (action == 1) { // Update Game Mode
+                    wrapper.passthrough(Type.VAR_INT);
+                } else if (action == 2) { // Update Ping
+                    wrapper.passthrough(Type.VAR_INT);
+                } else if (action == 3) { // Update Display Name
+                    // Display name
+                    protocol.getTranslatableRewriter().processText(wrapper.user(), wrapper.passthrough(Type.OPTIONAL_COMPONENT));
+                } // 4 = Remove Player
             }
         });
     }
@@ -244,15 +240,15 @@ public class EntityPackets1_16 extends EntityRewriter<ClientboundPackets1_16, Pr
 
             MetaType type = meta.metaType();
             if (type == Types1_14.META_TYPES.itemType) {
-                meta.setValue(protocol.getItemRewriter().handleItemToClient((Item) meta.getValue()));
+                meta.setValue(protocol.getItemRewriter().handleItemToClient(event.user(), (Item) meta.getValue()));
             } else if (type == Types1_14.META_TYPES.blockStateType) {
                 meta.setValue(protocol.getMappingData().getNewBlockStateId((int) meta.getValue()));
             } else if (type == Types1_14.META_TYPES.particleType) {
-                rewriteParticle((Particle) meta.getValue());
+                rewriteParticle(event.user(), (Particle) meta.getValue());
             } else if (type == Types1_14.META_TYPES.optionalComponentType) {
                 JsonElement text = meta.value();
                 if (text != null) {
-                    protocol.getTranslatableRewriter().processText(text);
+                    protocol.getTranslatableRewriter().processText(event.user(), text);
                 }
             }
         });

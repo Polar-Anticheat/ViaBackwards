@@ -51,6 +51,7 @@ public class Protocol1_13To1_13_1 extends BackwardsProtocol<ClientboundPackets1_
     private final EntityPackets1_13_1 entityRewriter = new EntityPackets1_13_1(this);
     private final InventoryPackets1_13_1 itemRewriter = new InventoryPackets1_13_1(this);
     private final TranslatableRewriter<ClientboundPackets1_13> translatableRewriter = new TranslatableRewriter<>(this, ComponentRewriter.ReadType.JSON);
+    private final TagRewriter<ClientboundPackets1_13> tagRewriter = new TagRewriter<>(this);
 
     public Protocol1_13To1_13_1() {
         super(ClientboundPackets1_13.class, ClientboundPackets1_13.class, ServerboundPackets1_13.class, ServerboundPackets1_13.class);
@@ -91,7 +92,7 @@ public class Protocol1_13To1_13_1 extends BackwardsProtocol<ClientboundPackets1_
                 map(Type.ITEM1_13);
                 map(Type.BOOLEAN);
                 handler(wrapper -> {
-                    itemRewriter.handleItemToServer(wrapper.get(Type.ITEM1_13, 0));
+                    itemRewriter.handleItemToServer(wrapper.user(), wrapper.get(Type.ITEM1_13, 0));
                     wrapper.write(Type.VAR_INT, 0);
                 });
             }
@@ -104,7 +105,7 @@ public class Protocol1_13To1_13_1 extends BackwardsProtocol<ClientboundPackets1_
                 map(Type.STRING); // Window Type
                 handler(wrapper -> {
                     JsonElement title = wrapper.passthrough(Type.COMPONENT);
-                    translatableRewriter.processText(title);
+                    translatableRewriter.processText(wrapper.user(), title);
 
                     if (ViaBackwards.getConfig().fix1_13FormattedInventoryTitle()) {
                         if (title.isJsonObject() && title.getAsJsonObject().size() == 1
@@ -150,7 +151,7 @@ public class Protocol1_13To1_13_1 extends BackwardsProtocol<ClientboundPackets1_
                 handler(wrapper -> {
                     int action = wrapper.get(Type.VAR_INT, 0);
                     if (action == 0 || action == 3) {
-                        translatableRewriter.processText(wrapper.passthrough(Type.COMPONENT));
+                        translatableRewriter.processText(wrapper.user(), wrapper.passthrough(Type.COMPONENT));
                         if (action == 0) {
                             wrapper.passthrough(Type.FLOAT);
                             wrapper.passthrough(Type.VAR_INT);
@@ -170,17 +171,14 @@ public class Protocol1_13To1_13_1 extends BackwardsProtocol<ClientboundPackets1_
 
             for (int i = 0; i < size; i++) {
                 wrapper.passthrough(Type.STRING); // Identifier
-
-                // Parent
-                if (wrapper.passthrough(Type.BOOLEAN))
-                    wrapper.passthrough(Type.STRING);
+                wrapper.passthrough(Type.OPTIONAL_STRING); // Parent
 
                 // Display data
                 if (wrapper.passthrough(Type.BOOLEAN)) {
                     wrapper.passthrough(Type.COMPONENT); // Title
                     wrapper.passthrough(Type.COMPONENT); // Description
                     Item icon = wrapper.passthrough(Type.ITEM1_13);
-                    itemRewriter.handleItemToClient(icon);
+                    itemRewriter.handleItemToClient(wrapper.user(), icon);
                     wrapper.passthrough(Type.VAR_INT); // Frame type
                     int flags = wrapper.passthrough(Type.INT); // Flags
                     if ((flags & 1) != 0)
@@ -198,7 +196,7 @@ public class Protocol1_13To1_13_1 extends BackwardsProtocol<ClientboundPackets1_
             }
         });
 
-        new TagRewriter<>(this).register(ClientboundPackets1_13.TAGS, RegistryType.ITEM);
+        tagRewriter.register(ClientboundPackets1_13.TAGS, RegistryType.ITEM);
         new StatisticsRewriter<>(this).register(ClientboundPackets1_13.STATISTICS);
     }
 
@@ -228,5 +226,10 @@ public class Protocol1_13To1_13_1 extends BackwardsProtocol<ClientboundPackets1_
 
     public TranslatableRewriter<ClientboundPackets1_13> translatableRewriter() {
         return translatableRewriter;
+    }
+
+    @Override
+    public TagRewriter<ClientboundPackets1_13> getTagRewriter() {
+        return tagRewriter;
     }
 }

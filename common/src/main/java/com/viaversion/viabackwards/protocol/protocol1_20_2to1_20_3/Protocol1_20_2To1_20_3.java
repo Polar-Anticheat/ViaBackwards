@@ -28,10 +28,9 @@ import com.viaversion.viabackwards.protocol.protocol1_20_2to1_20_3.storage.Spawn
 import com.viaversion.viaversion.api.connection.UserConnection;
 import com.viaversion.viaversion.api.minecraft.Position;
 import com.viaversion.viaversion.api.minecraft.entities.EntityTypes1_20_3;
-import com.viaversion.viaversion.api.protocol.packet.ClientboundPacketType;
 import com.viaversion.viaversion.api.protocol.packet.PacketWrapper;
-import com.viaversion.viaversion.api.protocol.packet.ServerboundPacketType;
-import com.viaversion.viaversion.api.protocol.packet.State;
+import com.viaversion.viaversion.api.protocol.packet.provider.PacketTypesProvider;
+import com.viaversion.viaversion.api.protocol.packet.provider.SimplePacketTypesProvider;
 import com.viaversion.viaversion.api.protocol.remapper.PacketHandler;
 import com.viaversion.viaversion.api.protocol.remapper.PacketHandlers;
 import com.viaversion.viaversion.api.type.Type;
@@ -40,12 +39,16 @@ import com.viaversion.viaversion.libs.fastutil.Pair;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.Tag;
 import com.viaversion.viaversion.protocols.protocol1_19_4to1_19_3.rewriter.CommandRewriter1_19_4;
 import com.viaversion.viaversion.protocols.protocol1_20_2to1_20.packet.ClientboundConfigurationPackets1_20_2;
+import com.viaversion.viaversion.protocols.protocol1_20_2to1_20.packet.ClientboundPacket1_20_2;
 import com.viaversion.viaversion.protocols.protocol1_20_2to1_20.packet.ClientboundPackets1_20_2;
 import com.viaversion.viaversion.protocols.protocol1_20_2to1_20.packet.ServerboundConfigurationPackets1_20_2;
+import com.viaversion.viaversion.protocols.protocol1_20_2to1_20.packet.ServerboundPacket1_20_2;
 import com.viaversion.viaversion.protocols.protocol1_20_2to1_20.packet.ServerboundPackets1_20_2;
 import com.viaversion.viaversion.protocols.protocol1_20_3to1_20_2.Protocol1_20_3To1_20_2;
 import com.viaversion.viaversion.protocols.protocol1_20_3to1_20_2.packet.ClientboundConfigurationPackets1_20_3;
+import com.viaversion.viaversion.protocols.protocol1_20_3to1_20_2.packet.ClientboundPacket1_20_3;
 import com.viaversion.viaversion.protocols.protocol1_20_3to1_20_2.packet.ClientboundPackets1_20_3;
+import com.viaversion.viaversion.protocols.protocol1_20_3to1_20_2.packet.ServerboundPacket1_20_3;
 import com.viaversion.viaversion.protocols.protocol1_20_3to1_20_2.packet.ServerboundPackets1_20_3;
 import com.viaversion.viaversion.rewriter.ComponentRewriter.ReadType;
 import com.viaversion.viaversion.rewriter.StatisticsRewriter;
@@ -54,31 +57,33 @@ import com.viaversion.viaversion.util.ComponentUtil;
 import java.util.BitSet;
 import java.util.UUID;
 
-public final class Protocol1_20_2To1_20_3 extends BackwardsProtocol<ClientboundPackets1_20_3, ClientboundPackets1_20_2, ServerboundPackets1_20_3, ServerboundPackets1_20_2> {
+import static com.viaversion.viaversion.util.ProtocolUtil.packetTypeMap;
+
+public final class Protocol1_20_2To1_20_3 extends BackwardsProtocol<ClientboundPacket1_20_3, ClientboundPacket1_20_2, ServerboundPacket1_20_3, ServerboundPacket1_20_2> {
 
     public static final BackwardsMappings MAPPINGS = new BackwardsMappings("1.20.3", "1.20.2", Protocol1_20_3To1_20_2.class);
     private final EntityPacketRewriter1_20_3 entityRewriter = new EntityPacketRewriter1_20_3(this);
     private final BlockItemPacketRewriter1_20_3 itemRewriter = new BlockItemPacketRewriter1_20_3(this);
-    private final TranslatableRewriter<ClientboundPackets1_20_3> translatableRewriter = new TranslatableRewriter<>(this, ReadType.NBT);
+    private final TranslatableRewriter<ClientboundPacket1_20_3> translatableRewriter = new TranslatableRewriter<>(this, ReadType.NBT);
+    private final TagRewriter<ClientboundPacket1_20_3> tagRewriter = new TagRewriter<>(this);
 
     public Protocol1_20_2To1_20_3() {
-        super(ClientboundPackets1_20_3.class, ClientboundPackets1_20_2.class, ServerboundPackets1_20_3.class, ServerboundPackets1_20_2.class);
+        super(ClientboundPacket1_20_3.class, ClientboundPacket1_20_2.class, ServerboundPacket1_20_3.class, ServerboundPacket1_20_2.class);
     }
 
     @Override
     protected void registerPackets() {
         super.registerPackets();
 
-        final TagRewriter<ClientboundPackets1_20_3> tagRewriter = new TagRewriter<>(this);
         tagRewriter.registerGeneric(ClientboundPackets1_20_3.TAGS);
 
-        final SoundRewriter<ClientboundPackets1_20_3> soundRewriter = new SoundRewriter<>(this);
+        final SoundRewriter<ClientboundPacket1_20_3> soundRewriter = new SoundRewriter<>(this);
         soundRewriter.register1_19_3Sound(ClientboundPackets1_20_3.SOUND);
-        soundRewriter.registerEntitySound(ClientboundPackets1_20_3.ENTITY_SOUND);
+        soundRewriter.register1_19_3Sound(ClientboundPackets1_20_3.ENTITY_SOUND);
         soundRewriter.registerStopSound(ClientboundPackets1_20_3.STOP_SOUND);
 
         new StatisticsRewriter<>(this).register(ClientboundPackets1_20_3.STATISTICS);
-        new CommandRewriter1_19_4<ClientboundPackets1_20_3>(this) {
+        new CommandRewriter1_19_4<ClientboundPacket1_20_3>(this) {
             @Override
             public void handleArgument(final PacketWrapper wrapper, final String argumentType) throws Exception {
                 if (argumentType.equals("minecraft:style")) {
@@ -137,17 +142,13 @@ public final class Protocol1_20_2To1_20_3 extends BackwardsProtocol<ClientboundP
             final int size = wrapper.passthrough(Type.VAR_INT); // Mapping size
             for (int i = 0; i < size; i++) {
                 wrapper.passthrough(Type.STRING); // Identifier
-
-                // Parent
-                if (wrapper.passthrough(Type.BOOLEAN)) {
-                    wrapper.passthrough(Type.STRING);
-                }
+                wrapper.passthrough(Type.OPTIONAL_STRING); // Parent
 
                 // Display data
                 if (wrapper.passthrough(Type.BOOLEAN)) {
                     convertComponent(wrapper); // Title
                     convertComponent(wrapper); // Description
-                    itemRewriter.handleItemToClient(wrapper.passthrough(Type.ITEM1_20_2)); // Icon
+                    itemRewriter.handleItemToClient(wrapper.user(), wrapper.passthrough(Type.ITEM1_20_2)); // Icon
                     wrapper.passthrough(Type.VAR_INT); // Frame type
                     final int flags = wrapper.passthrough(Type.INT);
                     if ((flags & 1) != 0) {
@@ -240,7 +241,7 @@ public final class Protocol1_20_2To1_20_3 extends BackwardsProtocol<ClientboundP
             }
         });
 
-        registerClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_2.DISCONNECT.getId(), ClientboundConfigurationPackets1_20_2.DISCONNECT.getId(), this::convertComponent);
+        registerClientbound(ClientboundConfigurationPackets1_20_3.DISCONNECT, this::convertComponent);
         registerClientbound(ClientboundPackets1_20_3.DISCONNECT, this::convertComponent);
         registerClientbound(ClientboundPackets1_20_3.RESOURCE_PACK_PUSH, ClientboundPackets1_20_2.RESOURCE_PACK, resourcePackHandler());
         registerClientbound(ClientboundPackets1_20_3.SERVER_DATA, this::convertComponent);
@@ -338,12 +339,10 @@ public final class Protocol1_20_2To1_20_3 extends BackwardsProtocol<ClientboundP
         cancelClientbound(ClientboundPackets1_20_3.RESOURCE_PACK_POP);
         registerServerbound(ServerboundPackets1_20_2.RESOURCE_PACK_STATUS, resourcePackStatusHandler());
 
-        cancelClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_3.RESOURCE_PACK_POP.getId());
-        registerServerbound(State.CONFIGURATION, ServerboundConfigurationPackets1_20_2.RESOURCE_PACK, resourcePackStatusHandler());
-        registerClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_3.RESOURCE_PACK_PUSH.getId(), ClientboundConfigurationPackets1_20_2.RESOURCE_PACK.getId(), resourcePackHandler());
-        registerClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_3.UPDATE_TAGS.getId(), ClientboundConfigurationPackets1_20_2.UPDATE_TAGS.getId(), tagRewriter.getGenericHandler());
-        // TODO Auto map via packet types provider
-        registerClientbound(State.CONFIGURATION, ClientboundConfigurationPackets1_20_3.UPDATE_ENABLED_FEATURES.getId(), ClientboundConfigurationPackets1_20_2.UPDATE_ENABLED_FEATURES.getId());
+        cancelClientbound(ClientboundConfigurationPackets1_20_3.RESOURCE_PACK_POP);
+        registerServerbound(ServerboundConfigurationPackets1_20_2.RESOURCE_PACK, resourcePackStatusHandler());
+        registerClientbound(ClientboundConfigurationPackets1_20_3.RESOURCE_PACK_PUSH, ClientboundConfigurationPackets1_20_2.RESOURCE_PACK, resourcePackHandler());
+        registerClientbound(ClientboundConfigurationPackets1_20_3.UPDATE_TAGS, tagRewriter.getGenericHandler());
     }
 
     private PacketHandler resourcePackStatusHandler() {
@@ -367,13 +366,13 @@ public final class Protocol1_20_2To1_20_3 extends BackwardsProtocol<ClientboundP
 
     private void convertComponent(final PacketWrapper wrapper) throws Exception {
         final Tag tag = wrapper.read(Type.TAG);
-        translatableRewriter.processTag(tag);
+        translatableRewriter.processTag(wrapper.user(), tag);
         wrapper.write(Type.COMPONENT, ComponentUtil.tagToJson(tag));
     }
 
     private void convertOptionalComponent(final PacketWrapper wrapper) throws Exception {
         final Tag tag = wrapper.read(Type.OPTIONAL_TAG);
-        translatableRewriter.processTag(tag);
+        translatableRewriter.processTag(wrapper.user(), tag);
         wrapper.write(Type.OPTIONAL_COMPONENT, ComponentUtil.tagToJson(tag));
     }
 
@@ -381,16 +380,6 @@ public final class Protocol1_20_2To1_20_3 extends BackwardsProtocol<ClientboundP
     public void init(final UserConnection connection) {
         connection.put(new SpawnPositionStorage());
         addEntityTracker(connection, new EntityTrackerBase(connection, EntityTypes1_20_3.PLAYER));
-    }
-
-    @Override
-    protected ServerboundPacketType serverboundFinishConfigurationPacket() {
-        return ServerboundConfigurationPackets1_20_2.FINISH_CONFIGURATION;
-    }
-
-    @Override
-    protected ClientboundPacketType clientboundFinishConfigurationPacket() {
-        return ClientboundConfigurationPackets1_20_3.FINISH_CONFIGURATION;
     }
 
     @Override
@@ -409,7 +398,22 @@ public final class Protocol1_20_2To1_20_3 extends BackwardsProtocol<ClientboundP
     }
 
     @Override
-    public TranslatableRewriter<ClientboundPackets1_20_3> getTranslatableRewriter() {
+    public TranslatableRewriter<ClientboundPacket1_20_3> getTranslatableRewriter() {
         return translatableRewriter;
+    }
+
+    @Override
+    public TagRewriter<ClientboundPacket1_20_3> getTagRewriter() {
+        return tagRewriter;
+    }
+
+    @Override
+    protected PacketTypesProvider<ClientboundPacket1_20_3, ClientboundPacket1_20_2, ServerboundPacket1_20_3, ServerboundPacket1_20_2> createPacketTypesProvider() {
+        return new SimplePacketTypesProvider<>(
+                packetTypeMap(unmappedClientboundPacketType, ClientboundPackets1_20_3.class, ClientboundConfigurationPackets1_20_3.class),
+                packetTypeMap(mappedClientboundPacketType, ClientboundPackets1_20_2.class, ClientboundConfigurationPackets1_20_2.class),
+                packetTypeMap(mappedServerboundPacketType, ServerboundPackets1_20_3.class, ServerboundConfigurationPackets1_20_2.class),
+                packetTypeMap(unmappedServerboundPacketType, ServerboundPackets1_20_2.class, ServerboundConfigurationPackets1_20_2.class)
+        );
     }
 }

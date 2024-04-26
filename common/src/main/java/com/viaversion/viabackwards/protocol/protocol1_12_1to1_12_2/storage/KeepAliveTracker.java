@@ -16,42 +16,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.viaversion.viabackwards.utils;
+package com.viaversion.viabackwards.protocol.protocol1_12_1to1_12_2.storage;
 
-public class Block {
-    private final int id;
-    private final short data;
+import com.viaversion.viaversion.api.connection.StorableObject;
 
-    public Block(int id, int data) {
-        this.id = id;
-        this.data = (short) data;
+public class KeepAliveTracker implements StorableObject {
+    private long keepAlive = Integer.MAX_VALUE;
+
+    public long getKeepAlive() {
+        return keepAlive;
     }
 
-    public int getId() {
-        return id;
-    }
-
-    public int getData() {
-        return data;
-    }
-
-    public Block withData(int data) {
-        return new Block(this.id, data);
+    public void setKeepAlive(long keepAlive) {
+        this.keepAlive = keepAlive;
     }
 
     @Override
-    public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Block block = (Block) o;
-        if (id != block.id) return false;
-        return data == block.data;
-    }
-
-    @Override
-    public int hashCode() {
-        int result = id;
-        result = 31 * result + data;
-        return result;
+    public String toString() {
+        return "KeepAliveTracker{" + "keepAlive=" + keepAlive + '}';
     }
 }

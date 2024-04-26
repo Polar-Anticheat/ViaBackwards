@@ -32,6 +32,7 @@ import com.viaversion.viaversion.libs.opennbt.tag.builtin.ListTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.StringTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.Tag;
 import com.viaversion.viaversion.protocols.protocol1_18to1_17_1.ClientboundPackets1_18;
+import com.viaversion.viaversion.util.TagUtil;
 
 public final class EntityPackets1_18 extends EntityRewriter<ClientboundPackets1_18, Protocol1_17_1To1_18> {
 
@@ -61,11 +62,10 @@ public final class EntityPackets1_18 extends EntityRewriter<ClientboundPackets1_
                 handler(worldDataTrackerHandler(1));
                 handler(wrapper -> {
                     final CompoundTag registry = wrapper.get(Type.NAMED_COMPOUND_TAG, 0);
-                    final CompoundTag biomeRegistry = registry.get("minecraft:worldgen/biome");
-                    final ListTag biomes = biomeRegistry.get("value");
-                    for (final Tag biome : biomes.getValue()) {
-                        final CompoundTag biomeCompound = ((CompoundTag) biome).get("element");
-                        final StringTag category = biomeCompound.get("category");
+                    final ListTag<CompoundTag> biomes = TagUtil.getRegistryEntries(registry, "worldgen/biome");
+                    for (final CompoundTag biome : biomes) {
+                        final CompoundTag biomeCompound = biome.getCompoundTag("element");
+                        final StringTag category = biomeCompound.getStringTag("category");
                         if (category.getValue().equals("mountain")) {
                             category.setValue("extreme_hills");
                         }
@@ -99,7 +99,7 @@ public final class EntityPackets1_18 extends EntityRewriter<ClientboundPackets1_
             MetaType type = meta.metaType();
             if (type == Types1_17.META_TYPES.particleType) {
                 Particle particle = meta.value();
-                if (particle.getId() == 3) { // Block marker
+                if (particle.id() == 3) { // Block marker
                     Particle.ParticleData<?> data = particle.getArguments().remove(0);
                     int blockState = (int) data.getValue();
                     if (blockState == 7786) { // Light block
@@ -111,7 +111,7 @@ public final class EntityPackets1_18 extends EntityRewriter<ClientboundPackets1_
                     return;
                 }
 
-                rewriteParticle(particle);
+                rewriteParticle(event.user(), particle);
             }
         });
 

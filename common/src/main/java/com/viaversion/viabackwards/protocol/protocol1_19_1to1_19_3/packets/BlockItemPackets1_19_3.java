@@ -17,7 +17,7 @@
  */
 package com.viaversion.viabackwards.protocol.protocol1_19_1to1_19_3.packets;
 
-import com.viaversion.viabackwards.api.rewriters.ItemRewriter;
+import com.viaversion.viabackwards.api.rewriters.BackwardsItemRewriter;
 import com.viaversion.viabackwards.protocol.protocol1_19_1to1_19_3.Protocol1_19_1To1_19_3;
 import com.viaversion.viaversion.api.minecraft.item.Item;
 import com.viaversion.viaversion.api.protocol.remapper.PacketHandlers;
@@ -29,7 +29,7 @@ import com.viaversion.viaversion.rewriter.BlockRewriter;
 import com.viaversion.viaversion.rewriter.RecipeRewriter;
 import com.viaversion.viaversion.util.Key;
 
-public final class BlockItemPackets1_19_3 extends ItemRewriter<ClientboundPackets1_19_3, ServerboundPackets1_19_1, Protocol1_19_1To1_19_3> {
+public final class BlockItemPackets1_19_3 extends BackwardsItemRewriter<ClientboundPackets1_19_3, ServerboundPackets1_19_1, Protocol1_19_1To1_19_3> {
 
     public BlockItemPackets1_19_3(final Protocol1_19_1To1_19_3 protocol) {
         super(protocol, Type.ITEM1_13_2, Type.ITEM1_13_2_ARRAY);
@@ -79,10 +79,10 @@ public final class BlockItemPackets1_19_3 extends ItemRewriter<ClientboundPacket
                         for (int j = 0; j < ingredients; j++) {
                             final Item[] items = wrapper.passthrough(Type.ITEM1_13_2_ARRAY); // Ingredients
                             for (final Item item : items) {
-                                handleItemToClient(item);
+                                handleItemToClient(wrapper.user(), item);
                             }
                         }
-                        handleItemToClient(wrapper.passthrough(Type.ITEM1_13_2)); // Result
+                        handleItemToClient(wrapper.user(), wrapper.passthrough(Type.ITEM1_13_2)); // Result
                         break;
                     }
                     case "crafting_shaped": {
@@ -92,10 +92,10 @@ public final class BlockItemPackets1_19_3 extends ItemRewriter<ClientboundPacket
                         for (int j = 0; j < ingredients; j++) {
                             final Item[] items = wrapper.passthrough(Type.ITEM1_13_2_ARRAY); // Ingredients
                             for (final Item item : items) {
-                                handleItemToClient(item);
+                                handleItemToClient(wrapper.user(), item);
                             }
                         }
-                        handleItemToClient(wrapper.passthrough(Type.ITEM1_13_2)); // Result
+                        handleItemToClient(wrapper.user(), wrapper.passthrough(Type.ITEM1_13_2)); // Result
                         break;
                     }
                     case "smelting":
@@ -106,9 +106,9 @@ public final class BlockItemPackets1_19_3 extends ItemRewriter<ClientboundPacket
                         wrapper.read(Type.VAR_INT); // Crafting book category
                         final Item[] items = wrapper.passthrough(Type.ITEM1_13_2_ARRAY); // Ingredients
                         for (final Item item : items) {
-                            handleItemToClient(item);
+                            handleItemToClient(wrapper.user(), item);
                         }
-                        handleItemToClient(wrapper.passthrough(Type.ITEM1_13_2)); // Result
+                        handleItemToClient(wrapper.user(), wrapper.passthrough(Type.ITEM1_13_2)); // Result
                         wrapper.passthrough(Type.FLOAT); // EXP
                         wrapper.passthrough(Type.VAR_INT); // Cooking time
                         break;

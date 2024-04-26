@@ -27,6 +27,7 @@ import com.viaversion.viaversion.api.data.Int2IntMapMappings;
 import com.viaversion.viaversion.api.data.entity.StoredEntityData;
 import com.viaversion.viaversion.api.data.entity.TrackedEntity;
 import com.viaversion.viaversion.api.minecraft.ClientWorld;
+import com.viaversion.viaversion.api.minecraft.Particle;
 import com.viaversion.viaversion.api.minecraft.entities.EntityType;
 import com.viaversion.viaversion.api.minecraft.metadata.MetaType;
 import com.viaversion.viaversion.api.minecraft.metadata.Metadata;
@@ -103,10 +104,18 @@ public abstract class EntityRewriterBase<C extends ClientboundPacketType, T exte
     }
 
     private void addDisplayVisibilityMeta(List<Metadata> metadataList) {
-        if (ViaBackwards.getConfig().alwaysShowOriginalMobName()) {
+        if (alwaysShowOriginalMobName()) {
             removeMeta(displayVisibilityIndex, metadataList);
-            metadataList.add(new Metadata(displayVisibilityIndex, displayVisibilityMetaType, true));
+            metadataList.add(new Metadata(displayVisibilityIndex, displayVisibilityMetaType, getDisplayVisibilityMetaValue()));
         }
+    }
+
+    protected Object getDisplayVisibilityMetaValue() {
+        return true;
+    }
+
+    protected boolean alwaysShowOriginalMobName() {
+        return ViaBackwards.getConfig().alwaysShowOriginalMobName();
     }
 
     protected @Nullable Metadata getMeta(int metaIndex, List<Metadata> metadataList) {
@@ -187,7 +196,7 @@ public abstract class EntityRewriterBase<C extends ClientboundPacketType, T exte
         filter().handler((event, meta) -> {
             MetaType type = meta.metaType();
             if (type == itemType) {
-                protocol.getItemRewriter().handleItemToClient(meta.value());
+                protocol.getItemRewriter().handleItemToClient(event.user(), meta.value());
             } else if (type == blockStateType) {
                 int data = meta.value();
                 meta.setValue(protocol.getMappingData().getNewBlockStateId(data));
@@ -197,13 +206,44 @@ public abstract class EntityRewriterBase<C extends ClientboundPacketType, T exte
                     meta.setValue(protocol.getMappingData().getNewBlockStateId(data));
                 }
             } else if (type == particleType) {
-                rewriteParticle(meta.value());
+                rewriteParticle(event.user(), meta.value());
             } else if (type == optionalComponentType || type == componentType) {
-
                 JsonElement text = meta.value();
-                if (text != null) {
-                    protocol.getTranslatableRewriter().processText(text);
+                protocol.getTranslatableRewriter().processText(event.user(), text);
+            }
+        });
+    }
+
+    public void registerMetaTypeHandler1_20_3(
+        @Nullable MetaType itemType,
+        @Nullable MetaType blockStateType,
+        @Nullable MetaType optionalBlockStateType,
+        @Nullable MetaType particleType,
+        @Nullable MetaType particlesType,
+        @Nullable MetaType componentType,
+        @Nullable MetaType optionalComponentType
+    ) {
+        filter().handler((event, meta) -> {
+            MetaType type = meta.metaType();
+            if (type == itemType) {
+                meta.setValue(protocol.getItemRewriter().handleItemToClient(event.user(), meta.value()));
+            } else if (type == blockStateType) {
+                int data = meta.value();
+                meta.setValue(protocol.getMappingData().getNewBlockStateId(data));
+            } else if (type == optionalBlockStateType) {
+                int data = meta.value();
+                if (data != 0) {
+                    meta.setValue(protocol.getMappingData().getNewBlockStateId(data));
                 }
+            } else if (type == particleType) {
+                rewriteParticle(event.user(), meta.value());
+            } else if (type == particlesType) {
+                Particle[] particles = meta.value();
+                for (final Particle particle : particles) {
+                    rewriteParticle(event.user(), particle);
+                }
+            } else if (type == optionalComponentType || type == componentType) {
+                protocol.getTranslatableRewriter().processTag(event.user(), meta.value());
             }
         });
     }

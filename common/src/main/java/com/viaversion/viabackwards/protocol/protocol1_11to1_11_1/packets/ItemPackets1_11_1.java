@@ -21,10 +21,10 @@ package com.viaversion.viabackwards.protocol.protocol1_11to1_11_1.packets;
 import com.viaversion.viabackwards.api.rewriters.LegacyBlockItemRewriter;
 import com.viaversion.viabackwards.api.rewriters.LegacyEnchantmentRewriter;
 import com.viaversion.viabackwards.protocol.protocol1_11to1_11_1.Protocol1_11To1_11_1;
+import com.viaversion.viaversion.api.connection.UserConnection;
 import com.viaversion.viaversion.api.minecraft.item.Item;
 import com.viaversion.viaversion.api.protocol.remapper.PacketHandlers;
 import com.viaversion.viaversion.api.type.Type;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.CompoundTag;
 import com.viaversion.viaversion.protocols.protocol1_9_3to1_9_1_2.ClientboundPackets1_9_3;
 import com.viaversion.viaversion.protocols.protocol1_9_3to1_9_1_2.ServerboundPackets1_9_3;
 
@@ -33,7 +33,7 @@ public class ItemPackets1_11_1 extends LegacyBlockItemRewriter<ClientboundPacket
     private LegacyEnchantmentRewriter enchantmentRewriter;
 
     public ItemPackets1_11_1(Protocol1_11To1_11_1 protocol) {
-        super(protocol);
+        super(protocol, "1.11.1");
     }
 
     @Override
@@ -54,12 +54,12 @@ public class ItemPackets1_11_1 extends LegacyBlockItemRewriter<ClientboundPacket
 
                         int size = wrapper.passthrough(Type.UNSIGNED_BYTE);
                         for (int i = 0; i < size; i++) {
-                            wrapper.write(Type.ITEM1_8, handleItemToClient(wrapper.read(Type.ITEM1_8))); // Input Item
-                            wrapper.write(Type.ITEM1_8, handleItemToClient(wrapper.read(Type.ITEM1_8))); // Output Item
+                            wrapper.write(Type.ITEM1_8, handleItemToClient(wrapper.user(), wrapper.read(Type.ITEM1_8))); // Input Item
+                            wrapper.write(Type.ITEM1_8, handleItemToClient(wrapper.user(), wrapper.read(Type.ITEM1_8))); // Output Item
 
                             boolean secondItem = wrapper.passthrough(Type.BOOLEAN); // Has second item
                             if (secondItem) {
-                                wrapper.write(Type.ITEM1_8, handleItemToClient(wrapper.read(Type.ITEM1_8))); // Second Item
+                                wrapper.write(Type.ITEM1_8, handleItemToClient(wrapper.user(), wrapper.read(Type.ITEM1_8))); // Second Item
                             }
 
                             wrapper.passthrough(Type.BOOLEAN); // Trade disabled
@@ -77,48 +77,32 @@ public class ItemPackets1_11_1 extends LegacyBlockItemRewriter<ClientboundPacket
         // Handle item metadata
         protocol.getEntityRewriter().filter().handler((event, meta) -> {
             if (meta.metaType().type().equals(Type.ITEM1_8)) { // Is Item
-                meta.setValue(handleItemToClient((Item) meta.getValue()));
+                meta.setValue(handleItemToClient(event.user(), (Item) meta.getValue()));
             }
         });
     }
 
     @Override
     protected void registerRewrites() {
-        enchantmentRewriter = new LegacyEnchantmentRewriter(nbtTagName);
+        enchantmentRewriter = new LegacyEnchantmentRewriter(nbtTagName());
         enchantmentRewriter.registerEnchantment(22, "§7Sweeping Edge");
     }
 
     @Override
-    public Item handleItemToClient(Item item) {
+    public Item handleItemToClient(UserConnection connection, Item item) {
         if (item == null) return null;
-        super.handleItemToClient(item);
+        super.handleItemToClient(connection, item);
 
-        CompoundTag tag = item.tag();
-        if (tag == null) return item;
-
-        if (tag.getListTag("ench") != null) {
-            enchantmentRewriter.rewriteEnchantmentsToClient(tag, false);
-        }
-        if (tag.getListTag("StoredEnchantments") != null) {
-            enchantmentRewriter.rewriteEnchantmentsToClient(tag, true);
-        }
+        enchantmentRewriter.handleToClient(item);
         return item;
     }
 
     @Override
-    public Item handleItemToServer(Item item) {
+    public Item handleItemToServer(UserConnection connection, Item item) {
         if (item == null) return null;
-        super.handleItemToServer(item);
+        super.handleItemToServer(connection, item);
 
-        CompoundTag tag = item.tag();
-        if (tag == null) return item;
-
-        if (tag.getListTag(nbtTagName + "|ench") != null) {
-            enchantmentRewriter.rewriteEnchantmentsToServer(tag, false);
-        }
-        if (tag.getListTag(nbtTagName + "|StoredEnchantments") != null) {
-            enchantmentRewriter.rewriteEnchantmentsToServer(tag, true);
-        }
+        enchantmentRewriter.handleToServer(item);
         return item;
     }
 }

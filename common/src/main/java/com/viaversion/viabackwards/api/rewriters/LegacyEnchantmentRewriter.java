@@ -17,6 +17,7 @@
  */
 package com.viaversion.viabackwards.api.rewriters;
 
+import com.viaversion.viaversion.api.minecraft.item.Item;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.ByteTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.CompoundTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.IntTag;
@@ -35,35 +36,61 @@ public class LegacyEnchantmentRewriter {
 
     private final Map<Short, String> enchantmentMappings = new HashMap<>();
     private final String nbtTagName;
+    private final boolean dummyEnchantment;
+
     private Set<Short> hideLevelForEnchants;
 
     public LegacyEnchantmentRewriter(String nbtTagName) {
+        this(nbtTagName, true);
+    }
+
+    public LegacyEnchantmentRewriter(String nbtTagName, boolean dummyEnchantment) {
         this.nbtTagName = nbtTagName;
+        this.dummyEnchantment = dummyEnchantment;
     }
 
     public void registerEnchantment(int id, String replacementLore) {
         enchantmentMappings.put((short) id, replacementLore);
     }
 
+    public void handleToClient(Item item) {
+        CompoundTag tag = item.tag();
+        if (tag == null) return;
+
+        if (tag.getListTag("ench") != null) {
+            rewriteEnchantmentsToClient(tag, false);
+        }
+        if (tag.getListTag("StoredEnchantments") != null) {
+            rewriteEnchantmentsToClient(tag, true);
+        }
+    }
+
+    public void handleToServer(Item item) {
+        CompoundTag tag = item.tag();
+        if (tag == null) return;
+
+        if (tag.contains(nbtTagName + "|ench")) {
+            rewriteEnchantmentsToServer(tag, false);
+        }
+        if (tag.contains(nbtTagName + "|StoredEnchantments")) {
+            rewriteEnchantmentsToServer(tag, true);
+        }
+    }
+
     public void rewriteEnchantmentsToClient(CompoundTag tag, boolean storedEnchant) {
         String key = storedEnchant ? "StoredEnchantments" : "ench";
-        ListTag enchantments = tag.getListTag(key);
-        ListTag remappedEnchantments = new ListTag(CompoundTag.class);
-        List<Tag> lore = new ArrayList<>();
-        for (Tag enchantmentEntry : enchantments.copy()) {
-            if (!(enchantmentEntry instanceof CompoundTag)) {
-                continue;
-            }
-
-            CompoundTag entryTag = (CompoundTag) enchantmentEntry;
-            NumberTag idTag = entryTag.getNumberTag("id");
+        ListTag<CompoundTag> enchantments = tag.getListTag(key, CompoundTag.class);
+        ListTag<CompoundTag> remappedEnchantments = new ListTag<>(CompoundTag.class);
+        List<StringTag> lore = new ArrayList<>();
+        for (CompoundTag enchantmentEntry : enchantments.copy()) {
+            NumberTag idTag = enchantmentEntry.getNumberTag("id");
             if (idTag == null) continue;
 
             short newId = idTag.asShort();
             String enchantmentName = enchantmentMappings.get(newId);
             if (enchantmentName != null) {
                 enchantments.remove(enchantmentEntry);
-                NumberTag levelTag = entryTag.getNumberTag("lvl");
+                NumberTag levelTag = enchantmentEntry.getNumberTag("lvl");
                 short level = levelTag != null ? levelTag.asShort() : 1;
                 if (hideLevelForEnchants != null && hideLevelForEnchants.contains(newId)) {
                     lore.add(new StringTag(enchantmentName));
@@ -74,12 +101,12 @@ public class LegacyEnchantmentRewriter {
             }
         }
         if (!lore.isEmpty()) {
-            if (!storedEnchant && enchantments.isEmpty()) {
+            if (this.dummyEnchantment && !storedEnchant && enchantments.isEmpty()) {
                 CompoundTag dummyEnchantment = new CompoundTag();
                 dummyEnchantment.putShort("id", (short) 0);
                 dummyEnchantment.putShort("lvl", (short) 0);
-                enchantments.add(dummyEnchantment);
 
+                enchantments.add(dummyEnchantment);
                 tag.put(nbtTagName + "|dummyEnchant", new ByteTag());
 
                 NumberTag hideFlags = tag.getNumberTag("HideFlags");
@@ -99,9 +126,9 @@ public class LegacyEnchantmentRewriter {
             if (display == null) {
                 tag.put("display", display = new CompoundTag());
             }
-            ListTag loreTag = display.getListTag("Lore");
+            ListTag<StringTag> loreTag = display.getListTag("Lore", StringTag.class);
             if (loreTag == null) {
-                display.put("Lore", loreTag = new ListTag(StringTag.class));
+                display.put("Lore", loreTag = new ListTag<>(StringTag.class));
             }
 
             lore.addAll(loreTag.getValue());
@@ -111,21 +138,15 @@ public class LegacyEnchantmentRewriter {
 
     public void rewriteEnchantmentsToServer(CompoundTag tag, boolean storedEnchant) {
         String key = storedEnchant ? "StoredEnchantments" : "ench";
-        ListTag remappedEnchantments = tag.remove(nbtTagName + "|" + key);
-        ListTag enchantments = tag.getListTag(key);
+        ListTag<CompoundTag> enchantments = tag.getListTag(key, CompoundTag.class);
         if (enchantments == null) {
-            enchantments = new ListTag(CompoundTag.class);
+            enchantments = new ListTag<>(CompoundTag.class);
         }
 
         if (!storedEnchant && tag.remove(nbtTagName + "|dummyEnchant") != null) {
-            for (Tag enchantment : enchantments.copy()) {
-                if (!(enchantment instanceof CompoundTag)) {
-                    continue;
-                }
-
-                CompoundTag entryTag = (CompoundTag) enchantment;
-                NumberTag idTag = entryTag.getNumberTag("id");
-                NumberTag levelTag = entryTag.getNumberTag("lvl");
+            for (CompoundTag enchantment : enchantments.copy()) {
+                NumberTag idTag = enchantment.getNumberTag("id");
+                NumberTag levelTag = enchantment.getNumberTag("lvl");
                 short id = idTag != null ? idTag.asShort() : 0;
                 short level = levelTag != null ? levelTag.asShort() : 0;
                 if (id == 0 && level == 0) {
@@ -143,8 +164,9 @@ public class LegacyEnchantmentRewriter {
 
         CompoundTag display = tag.getCompoundTag("display");
         // A few null checks just to be safe, though they shouldn't actually be
-        ListTag lore = display != null ? display.getListTag("Lore") : null;
-        for (Tag enchantment : remappedEnchantments.copy()) {
+        ListTag<StringTag> lore = display != null ? display.getListTag("Lore", StringTag.class) : null;
+        ListTag<CompoundTag> remappedEnchantments = tag.remove(nbtTagName + "|" + key);
+        for (CompoundTag enchantment : remappedEnchantments.copy()) {
             enchantments.add(enchantment);
             if (lore != null && !lore.isEmpty()) {
                 lore.remove(lore.get(0));

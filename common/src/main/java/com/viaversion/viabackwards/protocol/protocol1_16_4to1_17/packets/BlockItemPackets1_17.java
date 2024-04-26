@@ -18,7 +18,7 @@
 package com.viaversion.viabackwards.protocol.protocol1_16_4to1_17.packets;
 
 import com.viaversion.viabackwards.ViaBackwards;
-import com.viaversion.viabackwards.api.rewriters.ItemRewriter;
+import com.viaversion.viabackwards.api.rewriters.BackwardsItemRewriter;
 import com.viaversion.viabackwards.api.rewriters.MapColorRewriter;
 import com.viaversion.viabackwards.protocol.protocol1_16_4to1_17.Protocol1_16_4To1_17;
 import com.viaversion.viabackwards.protocol.protocol1_16_4to1_17.data.MapColorRewrites;
@@ -53,7 +53,7 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 
-public final class BlockItemPackets1_17 extends ItemRewriter<ClientboundPackets1_17, ServerboundPackets1_16_2, Protocol1_16_4To1_17> {
+public final class BlockItemPackets1_17 extends BackwardsItemRewriter<ClientboundPackets1_17, ServerboundPackets1_16_2, Protocol1_16_4To1_17> {
 
     public BlockItemPackets1_17(Protocol1_16_4To1_17 protocol) {
         super(protocol, Type.ITEM1_13_2, Type.ITEM1_13_2_SHORT_ARRAY);
@@ -77,7 +77,7 @@ public final class BlockItemPackets1_17 extends ItemRewriter<ClientboundPackets1
 
 
         registerCreativeInvAction(ServerboundPackets1_16_2.CREATIVE_INVENTORY_ACTION);
-        protocol.registerServerbound(ServerboundPackets1_16_2.EDIT_BOOK, wrapper -> handleItemToServer(wrapper.passthrough(Type.ITEM1_13_2)));
+        protocol.registerServerbound(ServerboundPackets1_16_2.EDIT_BOOK, wrapper -> handleItemToServer(wrapper.user(), wrapper.passthrough(Type.ITEM1_13_2)));
 
         // TODO Since the carried and modified items are typically set incorrectly, the server sends unnecessary
         // set slot packets after practically every window click, since it thinks the client and server
@@ -95,7 +95,7 @@ public final class BlockItemPackets1_17 extends ItemRewriter<ClientboundPackets1
                     byte button = wrapper.passthrough(Type.BYTE); // Button
                     wrapper.read(Type.SHORT); // Action id - removed
                     int mode = wrapper.passthrough(Type.VAR_INT); // Mode
-                    Item clicked = handleItemToServer(wrapper.read(Type.ITEM1_13_2)); // Clicked item
+                    Item clicked = handleItemToServer(wrapper.user(), wrapper.read(Type.ITEM1_13_2)); // Clicked item
 
                     // The 1.17 client would check the entire inventory for changes before -> after a click and send the changed slots here
                     wrapper.write(Type.VAR_INT, 0); // Empty array of slot+item
@@ -152,7 +152,7 @@ public final class BlockItemPackets1_17 extends ItemRewriter<ClientboundPackets1
                 wrapper.user().get(PlayerLastCursorItem.class).setLastCursorItem(carried);
             }
 
-            wrapper.write(Type.ITEM1_13_2, handleItemToClient(carried));
+            wrapper.write(Type.ITEM1_13_2, handleItemToClient(wrapper.user(), carried));
         });
 
         protocol.registerServerbound(ServerboundPackets1_16_2.WINDOW_CONFIRMATION, null, wrapper -> {

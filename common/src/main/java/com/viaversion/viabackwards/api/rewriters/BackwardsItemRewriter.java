@@ -19,6 +19,7 @@ package com.viaversion.viabackwards.api.rewriters;
 
 import com.viaversion.viabackwards.api.BackwardsProtocol;
 import com.viaversion.viabackwards.api.data.MappedItem;
+import com.viaversion.viaversion.api.connection.UserConnection;
 import com.viaversion.viaversion.api.minecraft.item.Item;
 import com.viaversion.viaversion.api.protocol.packet.ClientboundPacketType;
 import com.viaversion.viaversion.api.protocol.packet.ServerboundPacketType;
@@ -34,15 +35,19 @@ import com.viaversion.viaversion.libs.opennbt.tag.builtin.StringTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.Tag;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-public class ItemRewriter<C extends ClientboundPacketType, S extends ServerboundPacketType,
-    T extends BackwardsProtocol<C, ?, ?, S>> extends ItemRewriterBase<C, S, T> {
+public class BackwardsItemRewriter<C extends ClientboundPacketType, S extends ServerboundPacketType,
+    T extends BackwardsProtocol<C, ?, ?, S>> extends BackwardsItemRewriterBase<C, S, T> {
 
-    public ItemRewriter(T protocol, Type<Item> itemType, Type<Item[]> itemArrayType) {
+    public BackwardsItemRewriter(T protocol, Type<Item> itemType, Type<Item[]> itemArrayType) {
         super(protocol, itemType, itemArrayType, true);
     }
 
+    public BackwardsItemRewriter(T protocol, Type<Item> itemType, Type<Item[]> itemArrayType, Type<Item> mappedItemType, Type<Item[]> mappedItemArrayType) {
+        super(protocol, itemType, itemArrayType, mappedItemType, mappedItemArrayType, true);
+    }
+
     @Override
-    public @Nullable Item handleItemToClient(@Nullable Item item) {
+    public @Nullable Item handleItemToClient(UserConnection connection, @Nullable Item item) {
         if (item == null) {
             return null;
         }
@@ -52,7 +57,7 @@ public class ItemRewriter<C extends ClientboundPacketType, S extends Serverbound
             // Handle name and lore components
             StringTag name = display.getStringTag("Name");
             if (name != null) {
-                String newValue = protocol.getTranslatableRewriter().processText(name.getValue()).toString();
+                String newValue = protocol.getTranslatableRewriter().processText(connection, name.getValue()).toString();
                 if (!newValue.equals(name.getValue())) {
                     saveStringTag(display, name, "Name");
                 }
@@ -60,16 +65,11 @@ public class ItemRewriter<C extends ClientboundPacketType, S extends Serverbound
                 name.setValue(newValue);
             }
 
-            ListTag lore = display.getListTag("Lore");
+            ListTag<StringTag> lore = display.getListTag("Lore", StringTag.class);
             if (lore != null) {
                 boolean changed = false;
-                for (Tag loreEntryTag : lore) {
-                    if (!(loreEntryTag instanceof StringTag)) {
-                        continue;
-                    }
-
-                    StringTag loreEntry = (StringTag) loreEntryTag;
-                    String newValue = protocol.getTranslatableRewriter().processText(loreEntry.getValue()).toString();
+                for (StringTag loreEntry : lore) {
+                    String newValue = protocol.getTranslatableRewriter().processText(connection, loreEntry.getValue()).toString();
                     if (!changed && !newValue.equals(loreEntry.getValue())) {
                         // Backup original lore before doing any modifications
                         changed = true;
@@ -84,7 +84,7 @@ public class ItemRewriter<C extends ClientboundPacketType, S extends Serverbound
         MappedItem data = protocol.getMappingData() != null ? protocol.getMappingData().getMappedItem(item.identifier()) : null;
         if (data == null) {
             // Just rewrite the id
-            return super.handleItemToClient(item);
+            return super.handleItemToClient(connection, item);
         }
 
         if (item.tag() == null) {
@@ -92,8 +92,8 @@ public class ItemRewriter<C extends ClientboundPacketType, S extends Serverbound
         }
 
         // Save original id, set remapped id
-        item.tag().putInt(nbtTagName + "|id", item.identifier());
-        item.setIdentifier(data.getId());
+        item.tag().putInt(nbtTagName("id"), item.identifier());
+        item.setIdentifier(data.id());
 
         // Add custom model data
         if (data.customModelData() != null && !item.tag().contains("CustomModelData")) {
@@ -105,19 +105,19 @@ public class ItemRewriter<C extends ClientboundPacketType, S extends Serverbound
             item.tag().put("display", display = new CompoundTag());
         }
         if (!display.contains("Name")) {
-            display.put("Name", new StringTag(data.getJsonName()));
-            display.put(nbtTagName + "|customName", new ByteTag());
+            display.put("Name", new StringTag(data.jsonName()));
+            display.put(nbtTagName("customName"), new ByteTag());
         }
         return item;
     }
 
     @Override
-    public @Nullable Item handleItemToServer(@Nullable Item item) {
+    public @Nullable Item handleItemToServer(UserConnection connection, @Nullable Item item) {
         if (item == null) return null;
 
-        super.handleItemToServer(item);
+        super.handleItemToServer(connection, item);
         if (item.tag() != null) {
-            Tag originalId = item.tag().remove(nbtTagName + "|id");
+            Tag originalId = item.tag().remove(nbtTagName("id"));
             if (originalId instanceof IntTag) {
                 item.setIdentifier(((NumberTag) originalId).asInt());
             }
@@ -135,11 +135,7 @@ public class ItemRewriter<C extends ClientboundPacketType, S extends Serverbound
                     final int size = wrapper.passthrough(Type.VAR_INT); // Mapping size
                     for (int i = 0; i < size; i++) {
                         wrapper.passthrough(Type.STRING); // Identifier
-
-                        // Parent
-                        if (wrapper.passthrough(Type.BOOLEAN)) {
-                            wrapper.passthrough(Type.STRING);
-                        }
+                        wrapper.passthrough(Type.OPTIONAL_STRING); // Parent
 
                         // Display data
                         if (wrapper.passthrough(Type.BOOLEAN)) {
@@ -147,11 +143,13 @@ public class ItemRewriter<C extends ClientboundPacketType, S extends Serverbound
                             final JsonElement description = wrapper.passthrough(Type.COMPONENT);
                             final TranslatableRewriter<C> translatableRewriter = protocol.getTranslatableRewriter();
                             if (translatableRewriter != null) {
-                                translatableRewriter.processText(title);
-                                translatableRewriter.processText(description);
+                                translatableRewriter.processText(wrapper.user(), title);
+                                translatableRewriter.processText(wrapper.user(), description);
                             }
 
-                            handleItemToClient(wrapper.passthrough(getItemType())); // Icon
+                            final Item icon = handleItemToClient(wrapper.user(), wrapper.read(itemType()));
+                            wrapper.write(mappedItemType(), icon);
+
                             wrapper.passthrough(Type.VAR_INT); // Frame type
                             int flags = wrapper.passthrough(Type.INT); // Flags
                             if ((flags & 1) != 0) {
@@ -181,11 +179,7 @@ public class ItemRewriter<C extends ClientboundPacketType, S extends Serverbound
             final int size = wrapper.passthrough(Type.VAR_INT); // Mapping size
             for (int i = 0; i < size; i++) {
                 wrapper.passthrough(Type.STRING); // Identifier
-
-                // Parent
-                if (wrapper.passthrough(Type.BOOLEAN)) {
-                    wrapper.passthrough(Type.STRING);
-                }
+                wrapper.passthrough(Type.OPTIONAL_STRING); // Parent
 
                 // Display data
                 if (wrapper.passthrough(Type.BOOLEAN)) {
@@ -193,11 +187,13 @@ public class ItemRewriter<C extends ClientboundPacketType, S extends Serverbound
                     final Tag description = wrapper.passthrough(Type.TAG);
                     final TranslatableRewriter<C> translatableRewriter = protocol.getTranslatableRewriter();
                     if (translatableRewriter != null) {
-                        translatableRewriter.processTag(title);
-                        translatableRewriter.processTag(description);
+                        translatableRewriter.processTag(wrapper.user(), title);
+                        translatableRewriter.processTag(wrapper.user(), description);
                     }
 
-                    handleItemToClient(wrapper.passthrough(Type.ITEM1_20_2)); // Icon
+                    final Item icon = handleItemToClient(wrapper.user(), wrapper.read(itemType()));
+                    wrapper.write(mappedItemType(), icon);
+
                     wrapper.passthrough(Type.VAR_INT); // Frame type
                     final int flags = wrapper.passthrough(Type.INT);
                     if ((flags & 1) != 0) {

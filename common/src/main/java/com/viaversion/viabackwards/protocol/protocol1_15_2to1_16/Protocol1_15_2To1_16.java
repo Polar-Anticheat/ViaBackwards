@@ -51,6 +51,7 @@ public class Protocol1_15_2To1_16 extends BackwardsProtocol<ClientboundPackets1_
     private final EntityPackets1_16 entityRewriter = new EntityPackets1_16(this);
     private final BlockItemPackets1_16 blockItemPackets = new BlockItemPackets1_16(this);
     private final TranslatableRewriter1_16 translatableRewriter = new TranslatableRewriter1_16(this);
+    private final TagRewriter<ClientboundPackets1_16> tagRewriter = new TagRewriter<>(this);
 
     public Protocol1_15_2To1_16() {
         super(ClientboundPackets1_16.class, ClientboundPackets1_15.class, ServerboundPackets1_16.class, ServerboundPackets1_14.class);
@@ -75,14 +76,14 @@ public class Protocol1_15_2To1_16 extends BackwardsProtocol<ClientboundPackets1_
             JsonElement description = object.get("description");
             if (description == null) return;
 
-            translatableRewriter.processText(description);
+            translatableRewriter.processText(wrapper.user(), description);
             wrapper.set(Type.STRING, 0, object.toString());
         });
 
         registerClientbound(ClientboundPackets1_16.CHAT_MESSAGE, new PacketHandlers() {
             @Override
             public void register() {
-                handler(wrapper -> translatableRewriter.processText(wrapper.passthrough(Type.COMPONENT)));
+                handler(wrapper -> translatableRewriter.processText(wrapper.user(), wrapper.passthrough(Type.COMPONENT)));
                 map(Type.BYTE);
                 read(Type.UUID); // Sender
             }
@@ -93,7 +94,7 @@ public class Protocol1_15_2To1_16 extends BackwardsProtocol<ClientboundPackets1_
             public void register() {
                 map(Type.VAR_INT); // Window Id
                 map(Type.VAR_INT); // Window Type
-                handler(wrapper -> translatableRewriter.processText(wrapper.passthrough(Type.COMPONENT)));
+                handler(wrapper -> translatableRewriter.processText(wrapper.user(), wrapper.passthrough(Type.COMPONENT)));
                 handler(wrapper -> {
                     int windowType = wrapper.get(Type.VAR_INT, 1);
                     if (windowType == 20) { // Smithing table
@@ -118,7 +119,7 @@ public class Protocol1_15_2To1_16 extends BackwardsProtocol<ClientboundPackets1_
             wrapper.write(Type.STRING, uuid.toString());
         });
 
-        new TagRewriter<>(this).register(ClientboundPackets1_16.TAGS, RegistryType.ENTITY);
+        tagRewriter.register(ClientboundPackets1_16.TAGS, RegistryType.ENTITY);
 
         new StatisticsRewriter<>(this).register(ClientboundPackets1_16.STATISTICS);
 
@@ -191,5 +192,10 @@ public class Protocol1_15_2To1_16 extends BackwardsProtocol<ClientboundPackets1_
     @Override
     public BlockItemPackets1_16 getItemRewriter() {
         return blockItemPackets;
+    }
+
+    @Override
+    public TagRewriter<ClientboundPackets1_16> getTagRewriter() {
+        return tagRewriter;
     }
 }

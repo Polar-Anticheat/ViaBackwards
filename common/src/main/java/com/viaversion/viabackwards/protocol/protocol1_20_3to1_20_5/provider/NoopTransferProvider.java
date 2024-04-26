@@ -15,24 +15,13 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+package com.viaversion.viabackwards.protocol.protocol1_20_3to1_20_5.provider;
 
-package com.viaversion.viabackwards.protocol.protocol1_12_1to1_12_2;
+import com.viaversion.viaversion.api.connection.UserConnection;
 
-import com.viaversion.viaversion.api.connection.StorableObject;
-
-public class KeepAliveTracker implements StorableObject {
-    private long keepAlive = Integer.MAX_VALUE;
-
-    public long getKeepAlive() {
-        return keepAlive;
-    }
-
-    public void setKeepAlive(long keepAlive) {
-        this.keepAlive = keepAlive;
-    }
+final class NoopTransferProvider implements TransferProvider {
 
     @Override
-    public String toString() {
-        return "KeepAliveTracker{" + "keepAlive=" + keepAlive + '}';
+    public void connectToServer(final UserConnection connection, final String host, final int port) {
     }
 }

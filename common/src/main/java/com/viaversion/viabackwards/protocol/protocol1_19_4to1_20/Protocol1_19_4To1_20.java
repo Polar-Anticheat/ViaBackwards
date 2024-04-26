@@ -41,6 +41,7 @@ public final class Protocol1_19_4To1_20 extends BackwardsProtocol<ClientboundPac
     private final TranslatableRewriter<ClientboundPackets1_19_4> translatableRewriter = new TranslatableRewriter<>(this, ComponentRewriter.ReadType.JSON);
     private final EntityPackets1_20 entityRewriter = new EntityPackets1_20(this);
     private final BlockItemPackets1_20 itemRewriter = new BlockItemPackets1_20(this);
+    private final TagRewriter<ClientboundPackets1_19_4> tagRewriter = new TagRewriter<>(this);
 
     public Protocol1_19_4To1_20() {
         super(ClientboundPackets1_19_4.class, ClientboundPackets1_19_4.class, ServerboundPackets1_19_4.class, ServerboundPackets1_19_4.class);
@@ -50,14 +51,13 @@ public final class Protocol1_19_4To1_20 extends BackwardsProtocol<ClientboundPac
     protected void registerPackets() {
         super.registerPackets();
 
-        final TagRewriter<ClientboundPackets1_19_4> tagRewriter = new TagRewriter<>(this);
         tagRewriter.addEmptyTag(RegistryType.BLOCK, "minecraft:replaceable_plants");
         tagRewriter.registerGeneric(ClientboundPackets1_19_4.TAGS);
 
         final SoundRewriter<ClientboundPackets1_19_4> soundRewriter = new SoundRewriter<>(this);
         soundRewriter.registerStopSound(ClientboundPackets1_19_4.STOP_SOUND);
         soundRewriter.register1_19_3Sound(ClientboundPackets1_19_4.SOUND);
-        soundRewriter.registerSound(ClientboundPackets1_19_4.ENTITY_SOUND);
+        soundRewriter.register1_19_3Sound(ClientboundPackets1_19_4.ENTITY_SOUND);
 
         new StatisticsRewriter<>(this).register(ClientboundPackets1_19_4.STATISTICS);
 
@@ -87,7 +87,7 @@ public final class Protocol1_19_4To1_20 extends BackwardsProtocol<ClientboundPac
         registerClientbound(ClientboundPackets1_19_4.COMBAT_KILL, wrapper -> {
             wrapper.passthrough(Type.VAR_INT); // Duration
             wrapper.write(Type.INT, -1); // Killer ID - unused (who knows for how long?)
-            translatableRewriter.processText(wrapper.passthrough(Type.COMPONENT));
+            translatableRewriter.processText(wrapper.user(), wrapper.passthrough(Type.COMPONENT));
         });
     }
 
@@ -114,5 +114,10 @@ public final class Protocol1_19_4To1_20 extends BackwardsProtocol<ClientboundPac
     @Override
     public TranslatableRewriter<ClientboundPackets1_19_4> getTranslatableRewriter() {
         return translatableRewriter;
+    }
+
+    @Override
+    public TagRewriter<ClientboundPackets1_19_4> getTagRewriter() {
+        return tagRewriter;
     }
 }

@@ -26,6 +26,7 @@ import com.viaversion.viaversion.api.data.MappingData;
 import com.viaversion.viaversion.api.data.MappingDataBase;
 import com.viaversion.viaversion.api.data.Mappings;
 import com.viaversion.viaversion.api.protocol.Protocol;
+import com.viaversion.viaversion.libs.fastutil.ints.Int2ObjectArrayMap;
 import com.viaversion.viaversion.libs.fastutil.ints.Int2ObjectMap;
 import com.viaversion.viaversion.libs.fastutil.ints.Int2ObjectOpenHashMap;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.CompoundTag;
@@ -35,6 +36,7 @@ import com.viaversion.viaversion.libs.opennbt.tag.builtin.Tag;
 import com.viaversion.viaversion.util.Key;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -44,6 +46,7 @@ public class BackwardsMappings extends MappingDataBase {
     protected Int2ObjectMap<MappedItem> backwardsItemMappings;
     private Map<String, String> backwardsSoundMappings;
     private Map<String, String> entityNames;
+    private Int2ObjectMap<String> enchantmentNames;
 
     public BackwardsMappings(final String unmappedVersion, final String mappedVersion) {
         this(unmappedVersion, mappedVersion, null);
@@ -57,19 +60,19 @@ public class BackwardsMappings extends MappingDataBase {
 
     @Override
     protected void loadExtras(final CompoundTag data) {
-        final CompoundTag itemNames = data.get("itemnames");
+        final CompoundTag itemNames = data.getCompoundTag("itemnames");
         if (itemNames != null) {
             Preconditions.checkNotNull(itemMappings);
             backwardsItemMappings = new Int2ObjectOpenHashMap<>(itemNames.size());
 
-            final CompoundTag extraItemData = data.get("itemdata");
+            final CompoundTag extraItemData = data.getCompoundTag("itemdata");
             for (final Map.Entry<String, Tag> entry : itemNames.entrySet()) {
                 final StringTag name = (StringTag) entry.getValue();
                 final int id = Integer.parseInt(entry.getKey());
                 Integer customModelData = null;
                 if (extraItemData != null && extraItemData.contains(entry.getKey())) {
-                    final CompoundTag entryTag = extraItemData.get(entry.getKey());
-                    final NumberTag customModelDataTag = entryTag.get("custom_model_data");
+                    final CompoundTag entryTag = extraItemData.getCompoundTag(entry.getKey());
+                    final NumberTag customModelDataTag = entryTag.getNumberTag("custom_model_data");
                     customModelData = customModelDataTag != null ? customModelDataTag.asInt() : null;
                 }
 
@@ -77,23 +80,37 @@ public class BackwardsMappings extends MappingDataBase {
             }
         }
 
-        final CompoundTag entityNames = data.get("entitynames");
-        if (entityNames != null) {
-            this.entityNames = new HashMap<>(entityNames.size());
-            for (final Map.Entry<String, Tag> entry : entityNames.entrySet()) {
-                final StringTag mappedTag = (StringTag) entry.getValue();
-                this.entityNames.put(entry.getKey(), mappedTag.getValue());
-            }
+        this.entityNames = loadNameByStringMappings(data, "entitynames");
+        this.enchantmentNames = loadNameByIdMappings(data, "enchantmentnames");
+        this.backwardsSoundMappings = loadNameByStringMappings(data, "soundnames");
+    }
+
+    private @Nullable Map<String, String> loadNameByStringMappings(final CompoundTag data, final String key) {
+        final CompoundTag nameMappings = data.getCompoundTag(key);
+        if (nameMappings == null) {
+            return null;
         }
 
-        final CompoundTag soundNames = data.get("soundnames");
-        if (soundNames != null) {
-            backwardsSoundMappings = new HashMap<>(soundNames.size());
-            for (final Map.Entry<String, Tag> entry : soundNames.entrySet()) {
-                final StringTag mappedTag = (StringTag) entry.getValue();
-                backwardsSoundMappings.put(entry.getKey(), mappedTag.getValue());
-            }
+        final Map<String, String> map = new HashMap<>(nameMappings.size());
+        for (final Map.Entry<String, Tag> entry : nameMappings.entrySet()) {
+            final StringTag mappedTag = (StringTag) entry.getValue();
+            map.put(entry.getKey(), mappedTag.getValue());
         }
+        return map;
+    }
+
+    private @Nullable Int2ObjectMap<String> loadNameByIdMappings(final CompoundTag data, final String key) {
+        final CompoundTag nameMappings = data.getCompoundTag(key);
+        if (nameMappings == null) {
+            return null;
+        }
+
+        final Int2ObjectMap<String> map = new Int2ObjectArrayMap<>(nameMappings.size());
+        for (final Map.Entry<String, Tag> entry : nameMappings.entrySet()) {
+            final StringTag mappedTag = (StringTag) entry.getValue();
+            map.put(Integer.parseInt(entry.getKey()), mappedTag.getValue());
+        }
+        return map;
     }
 
     @Override
@@ -142,11 +159,18 @@ public class BackwardsMappings extends MappingDataBase {
 
     public @Nullable String mappedEntityName(final String entityName) {
         if (entityNames == null) {
-            ViaBackwards.getPlatform().getLogger().severe("No entity mappings found when requesting them for " + entityName);
-            new Exception().printStackTrace();
+            getLogger().log(Level.SEVERE, "No entity mappings found when requesting them for " + entityName, new RuntimeException());
             return null;
         }
         return entityNames.get(entityName);
+    }
+
+    public @Nullable String mappedEnchantmentName(final int enchantmentId) {
+        if (enchantmentNames == null) {
+            ViaBackwards.getPlatform().getLogger().log(Level.SEVERE, "No enchantment name mappings found when requesting " + enchantmentId, new RuntimeException());
+            return null;
+        }
+        return enchantmentNames.get(enchantmentId);
     }
 
     public @Nullable Int2ObjectMap<MappedItem> getBackwardsItemMappings() {
@@ -167,7 +191,7 @@ public class BackwardsMappings extends MappingDataBase {
     }
 
     @Override
-    protected @Nullable CompoundTag readNBTFile(final String name) {
-        return VBMappingDataLoader.loadNBTFromDir(name);
+    protected @Nullable CompoundTag readMappingsFile(final String name) {
+        return BackwardsMappingDataLoader.INSTANCE.loadNBTFromDir(name);
     }
 }

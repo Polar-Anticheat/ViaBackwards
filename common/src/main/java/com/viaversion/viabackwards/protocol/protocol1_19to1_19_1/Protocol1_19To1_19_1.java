@@ -43,19 +43,19 @@ import com.viaversion.viaversion.libs.gson.JsonElement;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.CompoundTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.ListTag;
 import com.viaversion.viaversion.libs.opennbt.tag.builtin.NumberTag;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.Tag;
 import com.viaversion.viaversion.protocols.base.ClientboundLoginPackets;
 import com.viaversion.viaversion.protocols.base.ServerboundLoginPackets;
 import com.viaversion.viaversion.protocols.protocol1_19_1to1_19.ClientboundPackets1_19_1;
 import com.viaversion.viaversion.protocols.protocol1_19_1to1_19.Protocol1_19_1To1_19;
 import com.viaversion.viaversion.protocols.protocol1_19_1to1_19.ServerboundPackets1_19_1;
 import com.viaversion.viaversion.protocols.protocol1_19to1_18_2.ClientboundPackets1_19;
+import com.viaversion.viaversion.protocols.protocol1_19to1_18_2.Protocol1_19To1_18_2;
 import com.viaversion.viaversion.protocols.protocol1_19to1_18_2.ServerboundPackets1_19;
-import com.viaversion.viaversion.protocols.protocol1_19to1_18_2.packets.EntityPackets;
 import com.viaversion.viaversion.rewriter.ComponentRewriter;
 import com.viaversion.viaversion.util.CipherUtil;
 import com.viaversion.viaversion.util.ComponentUtil;
 import com.viaversion.viaversion.util.Pair;
+import com.viaversion.viaversion.util.TagUtil;
 import java.util.List;
 import java.util.UUID;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -103,16 +103,15 @@ public final class Protocol1_19To1_19_1 extends BackwardsProtocol<ClientboundPac
                     chatTypeStorage.clear();
 
                     final CompoundTag registry = wrapper.get(Type.NAMED_COMPOUND_TAG, 0);
-                    final ListTag chatTypes = registry.getCompoundTag("minecraft:chat_type").get("value");
-                    for (final Tag chatType : chatTypes) {
-                        final CompoundTag chatTypeCompound = (CompoundTag) chatType;
-                        final NumberTag idTag = chatTypeCompound.get("id");
-                        chatTypeStorage.addChatType(idTag.asInt(), chatTypeCompound);
+                    final ListTag<CompoundTag> chatTypes = TagUtil.getRegistryEntries(registry, "chat_type");
+                    for (final CompoundTag chatType : chatTypes) {
+                        final NumberTag idTag = chatType.getNumberTag("id");
+                        chatTypeStorage.addChatType(idTag.asInt(), chatType);
                     }
 
                     // Replace with 1.19 chat types
                     // Ensures that the client has a chat type for system message, with and without overlay
-                    registry.put("minecraft:chat_type", EntityPackets.CHAT_REGISTRY.copy());
+                    registry.put("minecraft:chat_type", Protocol1_19To1_18_2.MAPPINGS.chatRegistry());
                 });
                 handler(entityRewriter.worldTrackerHandlerByKey());
             }
@@ -173,14 +172,14 @@ public final class Protocol1_19To1_19_1 extends BackwardsProtocol<ClientboundPac
                 return;
             }
 
-            translatableRewriter.processText(decoratedMessage);
+            translatableRewriter.processText(wrapper.user(), decoratedMessage);
             wrapper.write(Type.COMPONENT, decoratedMessage);
             wrapper.write(Type.VAR_INT, SYSTEM_CHAT_ID);
         });
 
         registerClientbound(ClientboundPackets1_19_1.SYSTEM_CHAT, wrapper -> {
             final JsonElement content = wrapper.passthrough(Type.COMPONENT);
-            translatableRewriter.processText(content);
+            translatableRewriter.processText(wrapper.user(), content);
 
             final boolean overlay = wrapper.read(Type.BOOLEAN);
             wrapper.write(Type.VAR_INT, overlay ? GAME_INFO_ID : SYSTEM_CHAT_ID);
