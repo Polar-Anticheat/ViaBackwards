@@ -63,4 +63,18 @@ public interface ViaBackwardsConfig extends Config {
      * @return true if enabled
      */
     boolean handlePingsAsInvAcknowledgements();
+
+    /**
+     * Adds bedrock at y=0 for sub 1.17 clients.
+     *
+     * @return true if enabled
+     */
+    boolean bedrockAtY0();
+
+    /**
+     * Suppresses warnings of missing emulations for certain features that are not supported (e.g. world height in 1.17+).
+     *
+     * @return true if enabled
+     */
+    boolean suppressEmulationWarnings();
 }

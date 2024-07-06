@@ -6,14 +6,15 @@ plugins {
 dependencies {
     api(projects.viabackwardsCommon)
     api(projects.viabackwardsBukkit)
-    api(projects.viabackwardsBungee)
-    api(projects.viabackwardsFabric)
-    api(projects.viabackwardsSponge)
     api(projects.viabackwardsVelocity)
+    api(projects.viabackwardsFabric)
 }
 
 tasks {
     shadowJar {
+        manifest {
+            attributes["paperweight-mappings-namespace"] = "mojang"
+        }
         archiveFileName.set("ViaBackwards-${project.version}.jar")
         destinationDirectory.set(rootProject.projectDir.resolve("build/libs"))
     }
@@ -34,8 +35,8 @@ if (!isRelease || isMainBranch) { // Only publish releases from the main branch
     modrinth {
         // val snapshotVersion = rootProject.parseMinecraftSnapshotVersion(project.version as String)
         val mcVersions: List<String> = (property("mcVersions") as String)
-                .split(",")
-                .map { it.trim() }
+            .split(",")
+            .map { it.trim() }
         //.let { if (snapshotVersion != null) it + snapshotVersion else it } // We're usually too fast for modrinth
 
         token.set(System.getenv("MODRINTH_TOKEN"))
@@ -50,8 +51,6 @@ if (!isRelease || isMainBranch) { // Only publish releases from the main branch
         loaders.add("paper")
         loaders.add("folia")
         loaders.add("velocity")
-        loaders.add("bungeecord")
-        loaders.add("sponge")
         autoAddDependsOn.set(false)
         detectLoaders.set(false)
         dependencies {
@@ -81,15 +80,6 @@ if (!isRelease || isMainBranch) { // Only publish releases from the main branch
                 velocity {
                     jar = tasks.shadowJar.flatMap { it.archiveFile }
                     platformVersions = listOf(property("velocityVersion") as String)
-                    dependencies {
-                        hangar("ViaVersion") {
-                            required = true
-                        }
-                    }
-                }
-                waterfall {
-                    jar = tasks.shadowJar.flatMap { it.archiveFile }
-                    platformVersions = listOf(property("waterfallVersion") as String)
                     dependencies {
                         hangar("ViaVersion") {
                             required = true

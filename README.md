@@ -17,8 +17,9 @@ This is a temporary solution and is not designed to be a permanent fix.
 
 Supported Versions
 -
-As a plugin, ViaBackwards runs on servers on releases 1.10-latest. Versions from the dev branch will also support the
-latest snapshot. You can also use ViaBackwards in ViaFabric or ViaFabricPlus.
+As a plugin, ViaBackwards runs on servers on releases 1.10-latest. You can also use ViaBackwards in ViaFabric or ViaFabricPlus.
+- in **ViaFabric**, put ViaBackwards into the `mods` folder
+- in **ViaFabricPlus**, put ViaBackwards into the `ViaFabricPlus/jars` folder
 
 See [HERE](https://github.com/ViaVersion) for an overview of the different Via* projects.
 
@@ -54,6 +55,8 @@ Building
 -
 After cloning this repository, build the project with Gradle by running `./gradlew build` and take the created jar out
 of the `build/libs` directory.
+
+You need JDK 17 or newer to build ViaBackwards.
 
 License
 -

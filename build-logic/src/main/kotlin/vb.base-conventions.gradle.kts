@@ -1,13 +1,12 @@
 plugins {
     `java-library`
-    `maven-publish`
 }
 
 tasks {
     // Variable replacements
     processResources {
-        filesMatching(listOf("plugin.yml", "META-INF/sponge_plugins.json", "fabric.mod.json", "bungee.yml")) {
-            expand("version" to project.version, "description" to project.description, "url" to "https://github.com/ViaVersion/ViaBackwards")
+        filesMatching(listOf("plugin.yml", "fabric.mod.json")) {
+            expand("version" to project.version, "description" to project.description, "url" to "https://viaversion.com/backwards")
         }
     }
     javadoc {
@@ -21,22 +20,6 @@ tasks {
 }
 
 java {
-    javaTarget(8)
+    javaTarget(17)
     withSourcesJar()
-}
-
-publishing {
-    publications.create<MavenPublication>("mavenJava") {
-        groupId = rootProject.group as String
-        artifactId = project.name
-        version = rootProject.version as String
-    }
-    repositories.maven {
-        name = "Via"
-        url = uri("https://repo.viaversion.com/")
-        credentials(PasswordCredentials::class)
-        authentication {
-            create<BasicAuthentication>("basic")
-        }
-    }
 }
