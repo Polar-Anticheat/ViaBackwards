@@ -170,7 +170,7 @@ public final class Protocol1_17To1_16_4 extends BackwardsProtocol<ClientboundPac
             int id = wrapper.read(Types.INT);
             short shortId = (short) id;
             if (id == shortId && ViaBackwards.getConfig().handlePingsAsInvAcknowledgements()) {
-                wrapper.user().get(PingRequests.class).addId(shortId);
+//                wrapper.user().get(PingRequests.class).addId(shortId);
 
                 // Send inventory acknowledgement to replace ping packet functionality in the unsigned byte range
                 PacketWrapper acknowledgementPacket = wrapper.create(ClientboundPackets1_16_2.CONTAINER_ACK);
