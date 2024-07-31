@@ -17,6 +17,7 @@
  */
 package com.viaversion.viabackwards.protocol.v1_21to1_20_5.rewriter;
 
+import com.viaversion.nbt.tag.ByteTag;
 import com.viaversion.nbt.tag.CompoundTag;
 import com.viaversion.nbt.tag.ListTag;
 import com.viaversion.nbt.tag.StringTag;
@@ -38,6 +39,8 @@ import com.viaversion.viaversion.api.type.types.chunk.ChunkType1_20_2;
 import com.viaversion.viaversion.api.type.types.version.Types1_20_5;
 import com.viaversion.viaversion.api.type.types.version.Types1_21;
 import com.viaversion.viaversion.libs.fastutil.ints.Int2IntMap;
+import com.viaversion.viaversion.libs.mcstructs.text.components.StringComponent;
+import com.viaversion.viaversion.libs.mcstructs.text.components.TranslationComponent;
 import com.viaversion.viaversion.protocols.v1_20_2to1_20_3.rewriter.RecipeRewriter1_20_3;
 import com.viaversion.viaversion.protocols.v1_20_3to1_20_5.data.Enchantments1_20_5;
 import com.viaversion.viaversion.protocols.v1_20_3to1_20_5.packet.ServerboundPacket1_20_5;
@@ -46,14 +49,13 @@ import com.viaversion.viaversion.protocols.v1_20_5to1_21.packet.ClientboundPacke
 import com.viaversion.viaversion.protocols.v1_20_5to1_21.packet.ClientboundPackets1_21;
 import com.viaversion.viaversion.rewriter.BlockRewriter;
 import com.viaversion.viaversion.rewriter.IdRewriteFunction;
+import com.viaversion.viaversion.util.SerializerVersion;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static com.viaversion.viaversion.protocols.v1_20_5to1_21.rewriter.BlockItemPacketRewriter1_21.downgradeItemData;
+import static com.viaversion.viaversion.protocols.v1_20_5to1_21.rewriter.BlockItemPacketRewriter1_21.resetRarityValues;
 import static com.viaversion.viaversion.protocols.v1_20_5to1_21.rewriter.BlockItemPacketRewriter1_21.updateItemData;
-
-import static com.viaversion.viabackwards.api.rewriters.EnchantmentRewriter.ENCHANTMENT_LEVEL_TRANSLATION;
 
 public final class BlockItemPacketRewriter1_21 extends BackwardsStructuredItemRewriter<ClientboundPacket1_21, ServerboundPacket1_20_5, Protocol1_21To1_20_5> {
 
@@ -80,9 +82,20 @@ public final class BlockItemPacketRewriter1_21 extends BackwardsStructuredItemRe
         registerContainerClick1_17_1(ServerboundPackets1_20_5.CONTAINER_CLICK);
         registerMerchantOffers1_20_5(ClientboundPackets1_21.MERCHANT_OFFERS, Types1_21.ITEM_COST, Types1_20_5.ITEM_COST, Types1_21.OPTIONAL_ITEM_COST, Types1_20_5.OPTIONAL_ITEM_COST);
         registerSetCreativeModeSlot(ServerboundPackets1_20_5.SET_CREATIVE_MODE_SLOT);
-        registerContainerSetData(ClientboundPackets1_21.CONTAINER_SET_DATA);
         registerLevelParticles1_20_5(ClientboundPackets1_21.LEVEL_PARTICLES, Types1_21.PARTICLE, Types1_20_5.PARTICLE);
         registerExplosion(ClientboundPackets1_21.EXPLODE, Types1_21.PARTICLE, Types1_20_5.PARTICLE);
+
+        protocol.registerClientbound(ClientboundPackets1_21.CONTAINER_SET_DATA, wrapper -> {
+            wrapper.passthrough(Types.UNSIGNED_BYTE); // Container id
+            final short property = wrapper.passthrough(Types.SHORT);
+            if (property >= 4 && property <= 6) { // Enchantment hints
+                final short enchantmentId = wrapper.read(Types.SHORT);
+                final EnchantmentsPaintingsStorage storage = wrapper.user().get(EnchantmentsPaintingsStorage.class);
+                final String key = storage.enchantments().idToKey(enchantmentId);
+                final int mappedId = key != null ? Enchantments1_20_5.keyToId(key) : -1;
+                wrapper.write(Types.SHORT, (short) mappedId);
+            }
+        });
 
         protocol.registerClientbound(ClientboundPackets1_21.HORSE_SCREEN_OPEN, wrapper -> {
             wrapper.passthrough(Types.UNSIGNED_BYTE); // Container id
@@ -145,17 +158,32 @@ public final class BlockItemPacketRewriter1_21 extends BackwardsStructuredItemRe
                 return new StringTag("Unknown enchantment");
             }
 
-            final CompoundTag fullDescription = new CompoundTag();
-            fullDescription.putString("translate", "%s %s");
-            fullDescription.put("with", new ListTag<>(Arrays.asList(description, new StringTag(ENCHANTMENT_LEVEL_TRANSLATION.formatted(level)))));
-            return fullDescription;
+            final var component = SerializerVersion.V1_20_5.toComponent(description);
+            component.getSiblings().add(new StringComponent(" "));
+            component.getSiblings().add(new TranslationComponent(EnchantmentRewriter.ENCHANTMENT_LEVEL_TRANSLATION.formatted(level)));
+
+            return SerializerVersion.V1_20_5.toTag(component);
         };
         enchantmentRewriter.rewriteEnchantmentsToClient(data, StructuredDataKey.ENCHANTMENTS, idRewriteFunction, descriptionSupplier, false);
         enchantmentRewriter.rewriteEnchantmentsToClient(data, StructuredDataKey.STORED_ENCHANTMENTS, idRewriteFunction, descriptionSupplier, true);
 
+        final int identifier = item.identifier();
+
         // Order is important
         super.handleItemToClient(connection, item);
         downgradeItemData(item);
+
+        final StructuredDataContainer dataContainer = item.dataContainer();
+        if (dataContainer.contains(StructuredDataKey.RARITY)) {
+            return item;
+        }
+
+        // Change rarity of trident and piglin banner pattern
+        final boolean trident = identifier == 1188;
+        if (trident || identifier == 1200) {
+            dataContainer.set(StructuredDataKey.RARITY, trident ? 3 : 1); // Epic or Uncommon
+            saveTag(createCustomTag(item), new ByteTag(true), "rarity");
+        }
         return item;
     }
 
@@ -179,6 +207,7 @@ public final class BlockItemPacketRewriter1_21 extends BackwardsStructuredItemRe
         // Order is important
         super.handleItemToServer(connection, item);
         updateItemData(item);
+        resetRarityValues(item, nbtTagName("rarity"));
         return item;
     }
 
