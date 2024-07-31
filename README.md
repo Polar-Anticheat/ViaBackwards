@@ -8,6 +8,13 @@
 
 Requires [ViaVersion](https://hangar.papermc.io/ViaVersion/ViaVersion) to be installed..
 
+Polar fork
+-
+This fork aims to temporarily fix the issue of duplicate transaction packets not being handled correctly.
+`ids` set in `PingRequests` class does not support duplicates. The fork comments out references to this class.
+
+This is a temporary solution and is not designed to be a permanent fix.
+
 Supported Versions
 -
 As a plugin, ViaBackwards runs on servers on releases 1.10-latest. You can also use ViaBackwards in ViaFabric or ViaFabricPlus.
