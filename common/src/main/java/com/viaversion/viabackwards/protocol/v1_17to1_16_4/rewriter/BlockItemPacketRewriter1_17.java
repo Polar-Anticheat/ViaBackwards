@@ -167,7 +167,7 @@ public final class BlockItemPacketRewriter1_17 extends BackwardsItemRewriter<Cli
             short inventoryId = wrapper.read(Types.UNSIGNED_BYTE);
             short confirmationId = wrapper.read(Types.SHORT);
             boolean accepted = wrapper.read(Types.BOOLEAN);
-            if (inventoryId == 0 && accepted && wrapper.user().get(PingRequests.class).removeId(confirmationId)) {
+            if (inventoryId == 0 && accepted /*&& wrapper.user().get(PingRequests.class).removeId(confirmationId)*/) {
                 PacketWrapper pongPacket = wrapper.create(ServerboundPackets1_17.PONG);
                 pongPacket.write(Types.INT, (int) confirmationId);
                 pongPacket.sendToServer(Protocol1_17To1_16_4.class);
