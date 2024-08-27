@@ -6,10 +6,7 @@ dependencyResolutionManagement {
     repositories {
         maven("https://repo.viaversion.com")
         maven("https://repo.papermc.io/repository/maven-public/")
-        maven("https://oss.sonatype.org/content/repositories/snapshots/")
-        maven("https://repo.spongepowered.org/maven")
         mavenCentral()
-        mavenLocal()
     }
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
 }
@@ -26,9 +23,7 @@ includeBuild("build-logic")
 
 setupViaSubproject("common")
 setupViaSubproject("bukkit")
-setupViaSubproject("bungee")
 setupViaSubproject("velocity")
-setupViaSubproject("sponge")
 setupViaSubproject("fabric")
 setupViaSubproject("template")
 

@@ -23,10 +23,10 @@ import com.viaversion.viaversion.api.minecraft.item.Item;
 import com.viaversion.viaversion.api.protocol.packet.ClientboundPacketType;
 import com.viaversion.viaversion.api.protocol.packet.ServerboundPacketType;
 import com.viaversion.viaversion.api.type.Type;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.CompoundTag;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.ListTag;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.StringTag;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.Tag;
+import com.viaversion.nbt.tag.CompoundTag;
+import com.viaversion.nbt.tag.ListTag;
+import com.viaversion.nbt.tag.StringTag;
+import com.viaversion.nbt.tag.Tag;
 import com.viaversion.viaversion.rewriter.ItemRewriter;
 import java.util.ArrayList;
 import java.util.List;
@@ -75,29 +75,6 @@ public abstract class BackwardsItemRewriterBase<C extends ClientboundPacketType,
         }
     }
 
-    protected void saveGenericTagList(CompoundTag tag, List<Tag> original, String name) {
-        // List tags cannot contain tags of different types, so we have to store them a bit more awkwardly as an indexed compound tag
-        String backupName = nbtTagName(name);
-        if (!tag.contains(backupName)) {
-            CompoundTag output = new CompoundTag();
-            for (int i = 0; i < original.size(); i++) {
-                output.put(Integer.toString(i), original.get(i));
-            }
-            tag.put(backupName, output);
-        }
-    }
-
-    protected List<Tag> removeGenericTagList(CompoundTag tag, String name) {
-        String backupName = nbtTagName(name);
-        CompoundTag data = tag.getCompoundTag(backupName);
-        if (data == null) {
-            return null;
-        }
-
-        tag.remove(backupName);
-        return new ArrayList<>(data.values());
-    }
-
     protected void restoreDisplayTag(Item item) {
         if (item.tag() == null) return;
 
@@ -127,17 +104,6 @@ public abstract class BackwardsItemRewriterBase<C extends ClientboundPacketType,
         if (original instanceof ListTag) {
             tag.put(tagName, ((ListTag<?>) original).copy());
         }
-    }
-
-    public <T extends Tag> @Nullable ListTag<T> removeListTag(CompoundTag tag, String tagName, Class<T> tagType) {
-        String backupName = nbtTagName(tagName);
-        ListTag<T> data = tag.getListTag(backupName, tagType);
-        if (data == null) {
-            return null;
-        }
-
-        tag.remove(backupName);
-        return data;
     }
 
     @Override

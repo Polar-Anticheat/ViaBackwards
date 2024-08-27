@@ -17,12 +17,12 @@
  */
 package com.viaversion.viabackwards.api.rewriters;
 
+import com.viaversion.viabackwards.utils.ChatUtil;
 import com.viaversion.viaversion.api.minecraft.item.Item;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.CompoundTag;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.ListTag;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.NumberTag;
-import com.viaversion.viaversion.libs.opennbt.tag.builtin.StringTag;
-import com.viaversion.viaversion.util.ComponentUtil;
+import com.viaversion.nbt.tag.CompoundTag;
+import com.viaversion.nbt.tag.ListTag;
+import com.viaversion.nbt.tag.NumberTag;
+import com.viaversion.nbt.tag.StringTag;
 import com.viaversion.viaversion.util.Key;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -34,6 +34,8 @@ import java.util.Map;
  * Rewriter to handle the addition of new enchantments.
  */
 public class EnchantmentRewriter {
+
+    public static final String ENCHANTMENT_LEVEL_TRANSLATION = "enchantment.level.%s";
 
     protected final Map<String, String> enchantmentMappings = new HashMap<>();
     protected final BackwardsItemRewriter<?, ?, ?> itemRewriter;
@@ -103,9 +105,11 @@ public class EnchantmentRewriter {
 
                 NumberTag levelTag = enchantmentEntry.getNumberTag("lvl");
                 int level = levelTag != null ? levelTag.asInt() : 1;
-                String loreValue = remappedName + " " + getRomanNumber(level);
+                String loreValue;
                 if (jsonFormat) {
-                    loreValue = ComponentUtil.legacyToJsonString(loreValue);
+                    loreValue = ChatUtil.legacyToJsonString(remappedName, ENCHANTMENT_LEVEL_TRANSLATION.formatted(level), true);
+                } else {
+                    loreValue = remappedName + " " + getRomanNumber(level);
                 }
 
                 loreToAdd.add(new StringTag(loreValue));
@@ -146,29 +150,18 @@ public class EnchantmentRewriter {
     }
 
     public static String getRomanNumber(int number) {
-        switch (number) {
-            case 1:
-                return "I";
-            case 2:
-                return "II";
-            case 3:
-                return "III";
-            case 4:
-                return "IV";
-            case 5:
-                return "V";
-            case 6:
-                return "VI";
-            case 7:
-                return "VII";
-            case 8:
-                return "VIII";
-            case 9:
-                return "IX";
-            case 10:
-                return "X";
-            default:
-                return Integer.toString(number);
-        }
+        return switch (number) {
+            case 1 -> "I";
+            case 2 -> "II";
+            case 3 -> "III";
+            case 4 -> "IV";
+            case 5 -> "V";
+            case 6 -> "VI";
+            case 7 -> "VII";
+            case 8 -> "VIII";
+            case 9 -> "IX";
+            case 10 -> "X";
+            default -> ENCHANTMENT_LEVEL_TRANSLATION.formatted(number); // Fallback to translation to match vanilla style
+        };
     }
 }

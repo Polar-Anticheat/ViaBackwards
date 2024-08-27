@@ -19,11 +19,15 @@
 package com.viaversion.viabackwards;
 
 import com.viaversion.viabackwards.api.ViaBackwardsPlatform;
+import com.viaversion.viabackwards.listener.BlockBreakListener;
 import com.viaversion.viabackwards.listener.FireDamageListener;
 import com.viaversion.viabackwards.listener.FireExtinguishListener;
 import com.viaversion.viabackwards.listener.LecternInteractListener;
 import com.viaversion.viabackwards.listener.PlayerItemDropListener;
+import com.viaversion.viabackwards.protocol.v1_20_2to1_20.provider.AdvancementCriteriaProvider;
+import com.viaversion.viabackwards.provider.BukkitAdvancementCriteriaProvider;
 import com.viaversion.viaversion.api.Via;
+import com.viaversion.viaversion.api.platform.providers.ViaProviders;
 import com.viaversion.viaversion.api.protocol.version.ProtocolVersion;
 import java.io.File;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -38,14 +42,14 @@ public class BukkitPlugin extends JavaPlugin implements ViaBackwardsPlatform {
     public void onEnable() {
         if (Via.getManager().getInjector().lateProtocolVersionSetting()) {
             // Enable in the next tick
-            Via.getPlatform().runSync(this::enable);
+            Via.getPlatform().runSync(this::enable, 1);
         } else {
             enable();
         }
     }
 
     private void enable() {
-        ProtocolVersion protocolVersion = Via.getAPI().getServerVersion().highestSupportedProtocolVersion();
+        final ProtocolVersion protocolVersion = Via.getAPI().getServerVersion().highestSupportedProtocolVersion();
         if (protocolVersion.newerThanOrEqualTo(ProtocolVersion.v1_17)) {
             new PlayerItemDropListener(this).register();
         }
@@ -57,6 +61,14 @@ public class BukkitPlugin extends JavaPlugin implements ViaBackwardsPlatform {
         }
         if (protocolVersion.newerThanOrEqualTo(ProtocolVersion.v1_12)) {
             new FireDamageListener(this).register();
+        }
+        if (protocolVersion.newerThanOrEqualTo(ProtocolVersion.v1_11)) {
+            new BlockBreakListener(this).register();
+        }
+
+        final ViaProviders providers = Via.getManager().getProviders();
+        if (protocolVersion.newerThanOrEqualTo(ProtocolVersion.v1_20_2)) {
+            providers.use(AdvancementCriteriaProvider.class, new BukkitAdvancementCriteriaProvider());
         }
     }
 
